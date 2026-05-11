@@ -23,6 +23,7 @@ $dotenv->load();
 // Import core classes
 use App\Helpers\ResponseHelper;
 use App\Exceptions\AppException;
+use App\Exceptions\ValidationException;
 
 try {
     // Initialize router
@@ -33,9 +34,12 @@ try {
     // Route dispatcher
     require_once __DIR__ . '/routes/api.php';
     
+} catch (ValidationException $e) {
+    http_response_code($e->getStatusCode());
+    echo json_encode(ResponseHelper::error($e->getMessage(), $e->getStatusCode(), $e->getErrors()));
 } catch (AppException $e) {
     http_response_code($e->getStatusCode());
-    echo json_encode(ResponseHelper::error($e->getMessage(), $e->getStatusCode()));
+    echo json_encode(ResponseHelper::error($e->getMessage(), $e->getStatusCode(), $e->getErrors()));
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(ResponseHelper::error('Error interno del servidor', 500));

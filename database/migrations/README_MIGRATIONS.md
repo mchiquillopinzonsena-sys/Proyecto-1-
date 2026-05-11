@@ -11,13 +11,18 @@ migrations/
 ├── 005_create_servicios_table.sql
 ├── 006_create_servicios_items_table.sql
 ├── 007_create_cuentas_cobro_table.sql
-├── 008_create_parametros_cotizador_table.sql
-├── 009_create_parametros_equipos_table.sql
-├── 010_create_stock_table.sql
-├── 011_create_movimientos_stock_table.sql
-├── 012_create_bloqueos_agenda_table.sql
-├── 013_create_auditoria_table.sql
-├── 014_create_configuracion_empresa_table.sql
+├── 008_create_cuentas_items_table.sql
+├── 009_create_parametros_cotizador_table.sql
+├── 010_create_parametros_equipos_table.sql
+├── 011_create_stock_table.sql
+├── 012_create_movimientos_stock_table.sql
+├── 013_create_bloqueos_agenda_table.sql
+├── 014_create_auditoria_table.sql
+├── 015_create_configuracion_empresa_table.sql
+├── 016_create_documentos_table.sql
+├── 017_alter_servicios_items_add_stock.sql
+├── 018_create_secuencias_documento.sql
+├── 019_alter_servicios_idempotencia_rn.sql
 └── README_MIGRATIONS.md
 ```
 
@@ -96,11 +101,11 @@ Cada tabla incluye índices en:
 
 ## 🔄 Triggers Automáticos
 
-Ver `database/sql/triggers.sql` para:
-- Generación automática de números (SVC-, CC-)
-- Validación de disponibilidad de técnicos
-- Auditoría automática de cambios
-- Movimientos de stock automáticos
+Ver `database/sql/triggers.sql` (ejecutar tras migraciones **018**). Incluye:
+- Generación atómica de números **SVC-** y **CC-** vía `secuencias_documento`
+- Validación de disponibilidad de técnicos (bloqueos de agenda)
+- Auditoría en tabla `auditoria` (esquema migración 014)
+- **RN-02:** el descuento de stock y `movimientos_stock` los aplica la API (`StockService`), no un trigger en `stock`, para evitar duplicados y registrar `servicio_id`
 
 ## 📊 Vistas Útiles
 

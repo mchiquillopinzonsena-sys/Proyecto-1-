@@ -1,0 +1,9 @@
+{
+  "name": "intermica-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cliente React para Intérmica S.A.S — capa API y estados de carga",
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}

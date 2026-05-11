@@ -1,30 +1,33 @@
 <?php
+
 /**
- * Service Status Enumeration
+ * Estados alineados con database/migrations/005_create_servicios_table.sql
  */
 
 namespace App\Enums;
 
 class ServiceStatus
 {
-    const COTIZADO = 'cotizado';
-    const CONFIRMADO = 'confirmado';
-    const EN_PROGRESO = 'en_progreso';
-    const COMPLETADO = 'completado';
-    const CANCELADO = 'cancelado';
-    const POSPUESTO = 'pospuesto';
-    
-    const ALL = [
-        self::COTIZADO,
-        self::CONFIRMADO,
-        self::EN_PROGRESO,
+    public const PENDIENTE = 'pendiente';
+
+    public const PROGRAMADO = 'programado';
+
+    public const EN_PROCESO = 'en_proceso';
+
+    public const COMPLETADO = 'completado';
+
+    public const CANCELADO = 'cancelado';
+
+    public const ALL = [
+        self::PENDIENTE,
+        self::PROGRAMADO,
+        self::EN_PROCESO,
         self::COMPLETADO,
         self::CANCELADO,
-        self::POSPUESTO,
     ];
-    
+
     public static function isValid(string $status): bool
     {
-        return in_array($status, self::ALL);
+        return in_array($status, self::ALL, true);
     }
 }
