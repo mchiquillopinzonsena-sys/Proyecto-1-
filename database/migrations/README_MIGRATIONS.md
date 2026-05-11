@@ -1,160 +1,129 @@
-# 📚 Migraciones de Base de Datos - Intérmica S.A.S
+# 📊 Migraciones de Base de Datos - Intérmica S.A.S
 
-## Descripción
+## Estructura de Archivos
 
-Este directorio contiene todas las migraciones SQL necesarias para crear la estructura de base de datos de la plataforma Intérmica S.A.S.
+```
+migrations/
+├── 001_create_usuarios_table.sql
+├── 002_create_sesiones_jwt_table.sql
+├── 003_create_tecnicos_table.sql
+├── 004_create_clientes_table.sql
+├── 005_create_servicios_table.sql
+├── 006_create_servicios_items_table.sql
+├── 007_create_cuentas_cobro_table.sql
+├── 008_create_parametros_cotizador_table.sql
+├── 009_create_parametros_equipos_table.sql
+├── 010_create_stock_table.sql
+├── 011_create_movimientos_stock_table.sql
+├── 012_create_bloqueos_agenda_table.sql
+├── 013_create_auditoria_table.sql
+├── 014_create_configuracion_empresa_table.sql
+└── README_MIGRATIONS.md
+```
 
-## Orden de Ejecución
+## 🚀 Instrucciones de Ejecución
 
-Las migraciones deben ejecutarse en orden numérico ascendente:
-
-1. **001_create_usuarios_table.sql** - Tabla base de usuarios
-2. **002_create_sesiones_jwt_table.sql** - Gestión de sesiones JWT
-3. **003_create_tecnicos_table.sql** - Tabla de técnicos
-4. **004_create_clientes_table.sql** - Tabla de clientes
-5. **005_create_servicios_table.sql** - Tabla de servicios
-6. **006_create_servicios_items_table.sql** - Items de servicios
-7. **007_create_cuentas_cobro_table.sql** - Cuentas de cobro (RN-06)
-8. **008_create_cuentas_items_table.sql** - Items de cuentas
-9. **009_create_parametros_cotizador_table.sql** - Parámetros cotizador
-10. **010_create_parametros_equipos_table.sql** - Equipos para cotización
-11. **011_create_stock_table.sql** - Stock de artículos (RN-02)
-12. **012_create_movimientos_stock_table.sql** - Movimientos de stock (RN-02)
-13. **013_create_bloqueos_agenda_table.sql** - Bloqueos de agenda (RN-13/14)
-14. **014_create_auditoria_table.sql** - Logs de auditoría (RN-16)
-15. **015_create_configuracion_empresa_table.sql** - Configuración global
-16. **016_create_documentos_table.sql** - Almacenamiento de documentos
-
-## Instalación Manual
-
+### Opción 1: Ejecutar schema.sql completo
 ```bash
-# Acceder a MySQL
-mysql -u root -p
-
-# Crear base de datos
-CREATE DATABASE IF NOT EXISTS intermica_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-# Usar la base de datos
-USE intermica_db;
-
-# Ejecutar migraciones en orden (copiar contenido de cada archivo)
-source 001_create_usuarios_table.sql;
-source 002_create_sesiones_jwt_table.sql;
--- ... continuar con las demás
+mysql -u root -p < database/sql/schema.sql
 ```
 
-## Instalación Automática con Script
-
+### Opción 2: Ejecutar migraciones individuales en orden
 ```bash
-# Desde la carpeta backend/
-php database/seeds/MigrationRunner.php
+mysql -u root -p intermica_db < database/migrations/001_create_usuarios_table.sql
+mysql -u root -p intermica_db < database/migrations/002_create_sesiones_jwt_table.sql
+# ... continuar con el resto
 ```
 
-## Principios de Diseño
+### Opción 3: Desde PHP (recomendado para desarrollo)
+```php
+<?php
+require_once 'backend/app/Database.php';
 
-### ✅ 5 Formas Normales (5NF)
-- Todas las tablas están normalizadas
-- No hay redundancia de datos
-- Cada entidad tiene responsabilidad única
-
-### 🔒 Integridad Referencial
-- Uso de `ON DELETE RESTRICT` (RN-25) para proteger datos históricos
-- Relaciones explícitas entre tablas
-- Claves foráneas validadas
-
-### 📝 Borrado Lógico (RN-23)
-- Campo `activo` TINYINT(1) en lugar de eliminaciones físicas
-- Auditoría completa de cambios
-- Recuperación de datos posible
-
-### 📊 Indices para Optimización
-- Indices en claves foráneas
-- Indices en campos de búsqueda frecuente
-- Indices en campos de filtrado por estado y fecha
-
-### 🕐 Timestamps
-- `created_at` para fecha de creación
-- `updated_at` para fecha de actualización
-- Auditoría automática mediante triggers
-
-## Tablas Principales
-
-### USUARIOS
-- Gestión centralizada de usuarios
-- Roles: admin, tecnico, cliente
-- Bloqueo de intentos fallidos de login
-
-### SESIONES_JWT
-- Una sesión por dispositivo/navegador
-- Tokens con expiración
-- Cierre manual de sesiones
-
-### TECNICOS
-- Especialización de usuarios
-- Disponibilidad y certificaciones
-- Asignación de servicios
-
-### CLIENTES
-- Empresas cliente
-- Crédito disponible
-- Días de pago
-
-### SERVICIOS
-- Servicios termográficos
-- Estados: pendiente, programado, en_proceso, completado, cancelado
-- Asignación de técnicos
-
-### CUENTAS_COBRO (RN-06)
-- Formato automático: CC-YYYY-XXXX
-- Estados: pendiente, parcial, pagada, vencida, cancelada
-- Generación automática desde servicios
-
-### STOCK (RN-02)
-- Control de inventario
-- Movimientos auditados
-- Cantidades mínimas
-
-### BLOQUEOS_AGENDA (RN-13/14)
-- Validación de disponibilidad técnicos
-- Tipos: no_disponible, vacaciones, mantenimiento, capacitacion
-
-### AUDITORIA (RN-16)
-- Registro de todas las transiciones de estado
-- IP y user agent
-- Antes/después de cambios
-
-## Relaciones Críticas
-
-```
-usuarios (1) --- (N) sesiones_jwt
-usuarios (1) --- (1) tecnicos
-usuarios (1) --- (1) clientes
-clientes (1) --- (N) servicios
-tecnicos (1) --- (N) servicios
-servicios (1) --- (N) servicios_items
-clientes (1) --- (N) cuentas_cobro
-cuentas_cobro (1) --- (N) cuentas_items
-tecnicos (1) --- (N) bloqueos_agenda
-stock (1) --- (N) movimientos_stock
+$migrator = new DatabaseMigrator();
+$migrator->runAllMigrations();
+?>
 ```
 
-## Seguridad
+## 📋 Orden de Ejecución de Migraciones
 
-- ✅ Encriptación de contraseñas con bcrypt
-- ✅ JWT con expiración temporal
-- ✅ Auditoría completa
-- ✅ Restricción de eliminaciones (ON DELETE RESTRICT)
-- ✅ Borrado lógico para histórico
+1. **usuarios** - Base de usuarios del sistema
+2. **sesiones_jwt** - Gestión de sesiones
+3. **tecnicos** - Técnicos disponibles
+4. **clientes** - Información de clientes
+5. **servicios** - Servicios solicitados
+6. **servicios_items** - Detalles de servicios
+7. **cuentas_cobro** - Facturas y cuentas
+8. **parametros_cotizador** - Parámetros dinámicos
+9. **parametros_equipos** - Catálogo de equipos
+10. **stock** - Inventario
+11. **movimientos_stock** - Auditoría de movimientos (RN-02)
+12. **bloqueos_agenda** - Validación técnicos (RN-13/14)
+13. **auditoria** - Log de cambios (RN-16)
+14. **configuracion_empresa** - Configuración global
 
-## Mantenimiento
+## 🔒 Restricciones de Integridad
+
+Todas las relaciones críticas utilizan **ON DELETE RESTRICT** para proteger la integridad histórica (RN-25):
 
 ```sql
--- Limpiar sesiones expiradas
-DELETE FROM sesiones_jwt WHERE fecha_expiracion < NOW() AND activa = 0;
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
+```
 
--- Resumen de usuarios por rol
-SELECT rol, COUNT(*) FROM usuarios WHERE activo = 1 GROUP BY rol;
+## 📝 Normalización a 5NF
 
--- Auditoría últimos cambios
-SELECT * FROM auditoria ORDER BY created_at DESC LIMIT 100;
+- ✅ **1NF**: Atributos atómicos
+- ✅ **2NF**: Dependencia funcional completa
+- ✅ **3NF**: Sin dependencias transitivas
+- ✅ **4NF**: Sin dependencias multivaluadas
+- ✅ **5NF**: Sin anomalías de join
+
+## 🗑️ Borrado Lógico (RN-23)
+
+Todas las tablas incluyen columna `activo TINYINT(1)` en lugar de eliminaciones físicas:
+
+```sql
+SELECT * FROM usuarios WHERE activo = 1; -- Solo registros activos
+```
+
+## 🔍 Índices para Performance
+
+Cada tabla incluye índices en:
+- Columnas de búsqueda frecuente (email, NIT, estado)
+- Claves foráneas
+- Rangos de fechas
+- Combinaciones de columnas muy consultadas
+
+## 🔄 Triggers Automáticos
+
+Ver `database/sql/triggers.sql` para:
+- Generación automática de números (SVC-, CC-)
+- Validación de disponibilidad de técnicos
+- Auditoría automática de cambios
+- Movimientos de stock automáticos
+
+## 📊 Vistas Útiles
+
+Ver `database/sql/views.sql` para:
+- Reportes de servicios completos
+- Cuentas vencidas
+- Disponibilidad de técnicos
+- Movimientos de inventario
+
+## 🛠️ Mantenimiento
+
+### Backup
+```bash
+mysqldump -u root -p intermica_db > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### Restore
+```bash
+mysql -u root -p intermica_db < backup_20260511_204746.sql
+```
+
+### Verificar integridad
+```sql
+SELECT COUNT(*) as total_usuarios FROM usuarios;
+SELECT COUNT(*) as total_cuentas FROM cuentas_cobro;
 ```
