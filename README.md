@@ -1,146 +1,132 @@
 # 🏢 Intérmica S.A.S - Plataforma Operativa Fullstack
 
-Sistema completo de gestión de servicios termográficos con React + PHP + MySQL.
+**Sistema integral de gestión de servicios termográficos industriales**
 
-**Estado del Proyecto:** 🚧 En Desarrollo
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-Development-yellow)
 
-## 🎯 Descripción General
+## 📋 Descripción
 
-Plataforma operativa robusta que permite gestionar:
-- **Servicios Termográficos**: Cotizaciones, agendamiento y ejecución
-- **Gestión de Técnicos**: Agenda inteligente con validación de disponibilidad
-- **Generación de Cuentas de Cobro**: Automática con formato CC-YYYY-XXXX
-- **Control de Stock**: Actualización automática en transacciones
-- **Reportes y Auditoría**: Trazabilidad completa de operaciones
-- **Control de Acceso**: JWT + RBAC por roles (Admin, Técnico, Cliente)
+Plataforma completa para la gestión operativa de Intérmica S.A.S:
+- **Frontend**: React 18 con JavaScript, Redux, React Router
+- **Backend**: PHP 8.1+ con arquitectura RESTful, JWT, RBAC
+- **Base de datos**: MySQL/MariaDB con 5NF, triggers y vistas
+- **Integraciones**: Generación de PDFs, QR dinámicos, sistema de auditoría
+
+## 🎯 Características Principales
+
+✅ **Autenticación & Seguridad**
+- JWT (JSON Web Tokens) con refresh tokens
+- Bcrypt para hash de contraseñas
+- Control de acceso basado en roles (RBAC)
+- Sistema de sesiones persistente
+
+✅ **Gestión de Servicios**
+- Cotizador inteligente con parámetros dinámicos (RN-06)
+- Agenda de técnicos con bloqueos (RN-13/14)
+- Actualización automática de stock (RN-02)
+- Estados y transiciones auditadas (RN-16)
+
+✅ **Cuentas de Cobro**
+- Generación automática con formato CC-YYYY-XXXX
+- PDFs descargables
+- QR dinámico de verificación
+- Historial de pagos
+
+✅ **Integridad de Datos**
+- Borrado lógico (activo = 0) en lugar de físico (RN-23)
+- Restricciones de integridad referencial (RN-25)
+- Auditoría completa de cambios (RN-16)
 
 ## 🚀 Quick Start
 
 ### Prerequisitos
-
-- **XAMPP** (PHP 8.1+, MySQL 5.7+)
+- **PHP** 8.1+ (incluido en XAMPP)
+- **MySQL** 5.7+ o MariaDB
 - **Node.js** 18+ y npm
 - **Composer** 2.0+
-- **Git**
 
-### Instalación Local
-
-#### 1️⃣ Clonar repositorio
+### 1. Clonar repositorio
 
 ```bash
 git clone https://github.com/mchiquillopinzonsena-sys/Proyecto-1-.git
 cd Proyecto-1-
 ```
 
-#### 2️⃣ Backend Setup
+### 2. Configurar Backend
 
 ```bash
 cd backend
 
+# Instalar dependencias
+composer install
+
 # Copiar archivo de configuración
 cp .env.example .env
 
-# Editar .env con tus credenciales de base de datos
-code .env
+# Editar .env con credenciales locales
+# DB_HOST=localhost
+# DB_USER=root
+# DB_PASS=(vacío)
+# DB_NAME=intermica_db
+```
 
-# Instalar dependencias PHP
-composer install
+### 3. Crear Base de Datos
 
-# Crear base de datos en MySQL
-mysql -u root -p < database/schema.sql
+```bash
+# Iniciar XAMPP
+# Abrir phpMyAdmin y crear base de datos 'intermica_db'
+
+# O desde línea de comandos:
+mysql -u root -e "CREATE DATABASE intermica_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # Ejecutar migraciones
-php database/migrations/runMigrations.php
+mysql -u root intermica_db < ../database/sql/schema.sql
 
-# Cargar datos iniciales
+# Ejecutar seeders
 php database/seeds/SeedRunner.php
 ```
 
-#### 3️⃣ Frontend Setup
+### 4. Configurar Frontend
 
 ```bash
 cd ../frontend
 
-# Instalar dependencias Node
+# Instalar dependencias
 npm install
 
-# Copiar configuración de entorno
+# Copiar variables de entorno
 cp .env.example .env.local
 
-# Editar con tu URL de API
-echo "REACT_APP_API_URL=http://localhost:8000/api/v1" >> .env.local
+# Editar .env.local
+# REACT_APP_API_URL=http://localhost:8000/api/v1
 
 # Iniciar servidor de desarrollo
 npm start
 ```
 
-#### 4️⃣ Configurar XAMPP
+### 5. Acceder a la aplicación
 
-```bash
-# En Windows
-Copiar: backend/ → C:\xampp\htdocs\intermica-api
+- **Frontend**: http://localhost:3000
+- **API**: http://localhost:8000/api/v1
+- **phpMyAdmin**: http://localhost/phpmyadmin
 
-# En Mac/Linux
-Copiar: backend/ → /Applications/XAMPP/htdocs/intermica-api
-```
+## 🔐 Credenciales por Defecto
 
-- Iniciar Apache y MySQL desde XAMPP Panel
-- Acceder a: `http://localhost/intermica-api`
+| Usuario | Email | Contraseña | Rol |
+|---------|-------|-----------|-----|
+| Admin Sistema | admin@intermica.com | Admin123! | admin |
+| Técnico Demo | tecnico@intermica.com | Tecnico123! | tecnico |
+| Cliente Demo | cliente@intermica.com | Cliente123! | cliente |
 
-## 📋 Estructura de Roles y Acceso
+⚠️ **Cambiar credenciales en producción**
 
-| Rol | URL | Módulos | Descripción |
-|-----|-----|---------|-------------|
-| **Admin** | `/admin` | Dashboard, Usuarios, Parámetros, Reportes, Config | Gestión completa del sistema |
-| **Técnico** | `/tecnico` | Agenda, Servicios, Registro Trabajo, Actividades | Ejecución de servicios |
-| **Cliente** | `/cliente` | Cotizaciones, Cuentas de Cobro, Perfil | Consumidor de servicios |
-| **Visitante** | `/login` | Login | Autenticación |
-
-## 🔑 Variables de Entorno
-
-### Backend (.env)
-
-```env
-# DATABASE
-DB_HOST=localhost
-DB_USER=root
-DB_PASS=
-DB_NAME=intermica_db
-DB_PORT=3306
-
-# JWT
-JWT_SECRET=your-super-secret-key-change-in-production-2026
-JWT_EXPIRY=3600
-JWT_REFRESH_EXPIRY=604800
-
-# APP
-APP_NAME=Intérmica S.A.S
-APP_ENV=development
-APP_DEBUG=true
-APP_URL=http://localhost:8000
-APP_LOG_LEVEL=debug
-
-# CORS
-CORS_ORIGIN=http://localhost:3000
-
-# PDF & QR
-PDF_OUTPUT_PATH=/storage/pdfs/
-QR_OUTPUT_PATH=/storage/qr/
-```
-
-### Frontend (.env.local)
-
-```env
-REACT_APP_API_URL=http://localhost:8000/api/v1
-REACT_APP_ENV=development
-REACT_APP_NAME=Intérmica S.A.S
-```
-
-## 📁 Estructura del Proyecto
+## 📁 Estructura de Directorios
 
 ```
 Proyecto-1-/
-├── backend/                    # API PHP RESTful
+├── backend/              # API PHP
 │   ├── app/
 │   │   ├── Controllers/
 │   │   ├── Models/
@@ -152,16 +138,16 @@ Proyecto-1-/
 │   │   └── Enums/
 │   ├── database/
 │   │   ├── migrations/
-│   │   └── seeds/
+│   │   ├── seeds/
+│   │   └── Database.php
 │   ├── config/
 │   ├── routes/
 │   ├── logs/
 │   ├── storage/
-│   ├── .env.example
 │   ├── composer.json
-│   └── index.php
+│   └── .env.example
 │
-├── frontend/                   # App React
+├── frontend/             # Aplicación React
 │   ├── src/
 │   │   ├── api/
 │   │   ├── components/
@@ -170,119 +156,155 @@ Proyecto-1-/
 │   │   ├── store/
 │   │   ├── styles/
 │   │   ├── utils/
+│   │   ├── __tests__/
 │   │   └── App.jsx
 │   ├── public/
-│   ├── .env.example
 │   ├── package.json
-│   └── vite.config.js
+│   └── .env.example
 │
-├── database/                   # Documentación DB
+├── database/             # Documentación DB
 │   ├── sql/
 │   └── documentation/
 │
-├── docs/                       # Documentación del proyecto
+├── docs/                 # Documentación
 │   ├── API_REFERENCE.md
 │   ├── ARQUITECTURA.md
-│   ├── REGLAS_NEGOCIO.md
-│   ├── SEGURIDAD.md
-│   └── postman/
+│   └── ...
 │
-├── docker/                     # Docker Compose (opcional)
-├── .gitignore
-├── .editorconfig
-├── README.md
-├── TECHNICAL_ARCHITECTURE.md
-└── LICENSE
+└── README.md
 ```
+
+## 📊 Roles y Acceso
+
+### Admin
+- `/admin/usuarios` - Gestión de usuarios
+- `/admin/parametros` - Configuración del cotizador
+- `/admin/reportes` - Reportes y auditoría
+- `/admin/configuracion` - Configuración empresa
+
+### Técnico
+- `/tecnico/agenda` - Calendario de servicios
+- `/tecnico/servicios` - Mis servicios asignados
+- `/tecnico/reportes` - Historial de actividades
+
+### Cliente
+- `/cliente/servicios` - Cotizaciones
+- `/cliente/cuentas` - Mis cuentas de cobro
+- `/cliente/perfil` - Mi perfil
+
+## 🔌 Endpoints Principales
+
+```
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+GET    /api/v1/usuarios
+POST   /api/v1/servicios
+GET    /api/v1/cuentas/:id
+GET    /api/v1/cuentas/:id/pdf
+GET    /api/v1/reportes/auditoria
+```
+
+**Documentación completa**: [API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ## 🧪 Testing
 
 ```bash
-# Backend tests
+# Backend
 cd backend
 composer test
 
-# Frontend tests
+# Frontend
 cd frontend
 npm test
-
-# Coverage
-npm run test:coverage
 ```
 
-## 📚 Documentación Detallada
+## 📚 Documentación
 
-- **[API Reference](docs/API_REFERENCE.md)** - Endpoints, parámetros, respuestas
-- **[Arquitectura](docs/ARQUITECTURA.md)** - Diseño del sistema, patrones
-- **[Reglas de Negocio](docs/REGLAS_NEGOCIO.md)** - RN-02, RN-06, RN-13/14, RN-16, etc.
-- **[Seguridad](docs/SEGURIDAD.md)** - JWT, RBAC, bcrypt, CORS
-- **[Setup Local](docs/SETUP_LOCAL.md)** - Guía detallada de instalación
-
-## 🔐 Seguridad
-
-✅ **Implementado:**
-- JWT (JSON Web Tokens) para autenticación sin estado
-- RBAC (Role-Based Access Control) granular
-- Contraseñas hasheadas con bcrypt
-- CORS configurado
-- SQL Injection prevention (prepared statements)
-- XSS protection
-- Validación de entrada en cliente y servidor
-- Logs de auditoría completos
+- [Guía de Instalación](docs/SETUP_LOCAL.md)
+- [Referencia API](docs/API_REFERENCE.md)
+- [Arquitectura Técnica](docs/ARQUITECTURA.md)
+- [Reglas de Negocio](docs/REGLAS_NEGOCIO.md)
+- [Seguridad](docs/SEGURIDAD.md)
+- [Diagrama ER](database/documentation/DiagramaER.md)
 
 ## 🛠️ Stack Tecnológico
 
-### Backend
-- **PHP 8.1+** - Lenguaje principal
-- **MySQL 5.7+ / MariaDB** - Base de datos
-- **JWT (Firebase)** - Autenticación
-- **TCPDF** - Generación de PDFs
-- **PHP QR Code** - Códigos QR dinámicos
-- **Monolog** - Logging y auditoría
-
 ### Frontend
-- **React 18+** - UI Framework
-- **Redux Toolkit** - State management
-- **Axios** - HTTP client
-- **React Router v6** - Routing
-- **Vite** - Build tool
-- **Yup** - Validación de formularios
-- **Tailwind CSS** (opcional) - Styling
+- **React** 18.3.1
+- **Redux** @reduxjs/toolkit
+- **React Router** 6.22.0
+- **Axios** 1.6.5
+- **React Hook Form** 7.48.0
+- **Tailwind CSS** (estilos)
 
-## 📝 Credenciales por Defecto (CAMBIAR EN PRODUCCIÓN)
+### Backend
+- **PHP** 8.1+
+- **Firebase JWT** 6.10
+- **Monolog** (logging)
+- **TCPDF** (generación PDFs)
+- **PHP QR Code** (códigos QR)
+- **PHPUnit** (testing)
 
-Luego de ejecutar seeders:
+### Base de Datos
+- **MySQL** 5.7+ o **MariaDB**
+- **5 Formas Normales (5NF)**
+- **Triggers** para automaciones
+- **Vistas** para reportes
 
+## 🔐 Variables de Entorno
+
+### Backend (.env)
 ```
-Email: admin@intermica.com
-Password: Admin@2026
-Rol: Admin
+# Database
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=
+DB_NAME=intermica_db
+DB_PORT=3306
 
-Email: tecnico@intermica.com
-Password: Tech@2026
-Rol: Técnico
+# JWT
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRY=3600
+JWT_REFRESH_EXPIRY=604800
 
-Email: cliente@intermica.com
-Password: Client@2026
-Rol: Cliente
+# Application
+APP_ENV=development
+APP_DEBUG=true
+APP_LOG_LEVEL=debug
+APP_URL=http://localhost:8000
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+
+# Email (opcional)
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=465
+MAIL_USERNAME=
+MAIL_PASSWORD=
 ```
 
-## 🚢 Deployment
+### Frontend (.env.local)
+```
+REACT_APP_API_URL=http://localhost:8000/api/v1
+REACT_APP_ENV=development
+REACT_APP_LOG_LEVEL=debug
+```
 
-Ver documentación de deployment en `docs/DEPLOYMENT.md`
+## 📝 Contribuir
 
-## 📞 Contacto y Soporte
-
-- **Organización:** Intérmica S.A.S
-- **Repositorio:** [GitHub](https://github.com/mchiquillopinzonsena-sys/Proyecto-1-)
-- **Issues:** [GitHub Issues](https://github.com/mchiquillopinzonsena-sys/Proyecto-1-/issues)
+1. Crear una rama: `git checkout -b feature/mi-feature`
+2. Commits: `git commit -am 'Agregar feature'`
+3. Push: `git push origin feature/mi-feature`
+4. Pull Request
 
 ## 📄 Licencia
 
 MIT License © 2026 Intérmica S.A.S
 
+## 📞 Soporte
+
+Para soporte o reportar bugs: [Issues](https://github.com/mchiquillopinzonsena-sys/Proyecto-1-/issues)
+
 ---
 
-**Última actualización:** 2026-05-11
-
-**Mantenedor:** @mchiquillopinzonsena-sys
+**Última actualización**: 2026-05-11
