@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: intermica_php
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:80"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=intermica_user
+      - DB_PASS=intermica_password
+      - DB_NAME=intermica_db
+    depends_on:
+      - mysql
+    networks:
+      - intermica_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: intermica_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: intermica_db
+      MYSQL_USER: intermica_user
+      MYSQL_PASSWORD: intermica_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/sql:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+    networks:
+      - intermica_network
+
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: intermica_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - intermica_network
+
+volumes:
+  mysql_data:
+
+networks:
+  intermica_network:
+    driver: bridge

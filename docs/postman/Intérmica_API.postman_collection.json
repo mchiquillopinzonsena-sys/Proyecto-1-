@@ -1,0 +1,271 @@
+{
+  "info": {
+    "name": "Intérmica S.A.S API",
+    "description": "Colección completa de endpoints para desarrollo y pruebas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@intermica.com\",\n  \"password\": \"Admin@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/auth/login",
+              "host": ["{{API_URL}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/auth/refresh",
+              "host": ["{{API_URL}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/auth/logout",
+              "host": ["{{API_URL}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "item": [
+        {
+          "name": "Listar Usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/usuarios?page=1&per_page=30",
+              "host": ["{{API_URL}}"],
+              "path": ["usuarios"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "per_page", "value": "30"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tecnico@intermica.com\",\n  \"nombre\": \"Juan Técnico\",\n  \"password\": \"TecnicoPass@123\",\n  \"rol\": \"tecnico\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/usuarios",
+              "host": ["{{API_URL}}"],
+              "path": ["usuarios"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Servicios",
+      "item": [
+        {
+          "name": "Listar Servicios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/servicios?estado=pendiente",
+              "host": ["{{API_URL}}"],
+              "path": ["servicios"],
+              "query": [{"key": "estado", "value": "pendiente"}]
+            }
+          }
+        },
+        {
+          "name": "Crear Servicio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": 1,\n  \"descripcion\": \"Inspección térmica de equipos\",\n  \"tipo_servicio\": \"inspeccion\",\n  \"fecha_programada\": \"2026-05-15T10:00:00Z\",\n  \"ubicacion\": \"Carrera 5 #12-34, Bogotá\",\n  \"duracion_estimada\": 4\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/servicios",
+              "host": ["{{API_URL}}"],
+              "path": ["servicios"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cuentas de Cobro",
+      "item": [
+        {
+          "name": "Listar Cuentas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/cuentas?estado=pendiente",
+              "host": ["{{API_URL}}"],
+              "path": ["cuentas"],
+              "query": [{"key": "estado", "value": "pendiente"}]
+            }
+          }
+        },
+        {
+          "name": "Generar Cuenta de Cobro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"servicios_ids\": [1, 2],\n  \"fecha_vencimiento\": \"2026-06-10\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/cuentas",
+              "host": ["{{API_URL}}"],
+              "path": ["cuentas"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Cuenta con Detalles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/cuentas/1",
+              "host": ["{{API_URL}}"],
+              "path": ["cuentas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Descargar PDF Cuenta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/cuentas/1/pdf",
+              "host": ["{{API_URL}}"],
+              "path": ["cuentas", "1", "pdf"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "API_URL",
+      "value": "http://localhost/intermica-api/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "REFRESH_TOKEN",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
