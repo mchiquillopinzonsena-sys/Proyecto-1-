@@ -110,6 +110,10 @@ class JWTHelper {
 | **tecnico** | Agenda, Servicios, Registro | `/tecnico/*` |
 | **cliente** | Cotizaciones, Cuentas propias | `/cliente/*` |
 
+### Rol «público» (sin JWT)
+
+No es un valor de `usuarios.rol`. Las rutas que no requieren token están definidas por **allowlist** en `backend/routes/api.php` (por ejemplo salud y autenticación). Cualquier otra ruta exige `Authorization: Bearer` y sesión activa en `sesiones_jwt`.
+
 ### Middleware RBAC
 
 ```php
