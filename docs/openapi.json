@@ -1,0 +1,311 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Intérmica API",
+    "description": "API REST para Gestión de Servicios Termográficos",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Intérmica S.A.S",
+      "email": "soporte@intermica.com"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000/api/v1",
+      "description": "Servidor local de desarrollo"
+    },
+    {
+      "url": "https://api.intermica.com/api/v1",
+      "description": "Servidor de producción"
+    }
+  ],
+  "securityDefinitions": {
+    "bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "JWT Bearer token. Formato: Bearer <token>"
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Verifica que la API esté operativa",
+        "tags": ["Health"],
+        "responses": {
+          "200": {
+            "description": "API operativa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string", "example": "ok" },
+                        "service": { "type": "string", "example": "intermica-api" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Autenticarse",
+        "description": "Obtener tokens JWT con email y contraseña",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Autenticación exitosa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "access_token": { "type": "string" },
+                        "refresh_token": { "type": "string" },
+                        "expires_in": { "type": "integer" },
+                        "token_type": { "type": "string", "example": "Bearer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales inválidas"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Renovar token",
+        "description": "Obtener nuevo access token usando refresh token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refresh_token": { "type": "string" }
+                },
+                "required": ["refresh_token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token renovado"
+          },
+          "401": {
+            "description": "Refresh token inválido o expirado"
+          }
+        }
+      }
+    },
+    "/servicios": {
+      "get": {
+        "summary": "Listar servicios",
+        "description": "Obtener lista de servicios (filtrada por rol)",
+        "tags": ["Servicios"],
+        "security": [{ "bearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de servicios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "integer" },
+                          "numero_servicio": { "type": "string" },
+                          "estado": { "type": "string", "enum": ["pendiente", "programado", "en_proceso", "completado", "cancelado"] },
+                          "fecha_solicitud": { "type": "string", "format": "date" },
+                          "valor_estimado": { "type": "number" },
+                          "valor_final": { "type": "number" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "No autenticado" },
+          "403": { "description": "Sin permisos" }
+        }
+      }
+    },
+    "/servicios/{id}": {
+      "get": {
+        "summary": "Obtener servicio",
+        "description": "Obtener detalle de un servicio específico",
+        "tags": ["Servicios"],
+        "security": [{ "bearer": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Detalle del servicio" },
+          "404": { "description": "Servicio no encontrado" }
+        }
+      }
+    },
+    "/servicios/{id}/estado": {
+      "patch": {
+        "summary": "Cambiar estado de servicio",
+        "description": "Actualizar estado del servicio (dispara automático)",
+        "tags": ["Servicios"],
+        "security": [{ "bearer": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "estado": { "type": "string", "enum": ["pendiente", "programado", "en_proceso", "completado", "cancelado"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Estado actualizado" }
+        }
+      }
+    },
+    "/cuentas": {
+      "post": {
+        "summary": "Crear cuenta de cobro",
+        "description": "Generar nueva cuenta de cobro desde servicios completados",
+        "tags": ["Cuentas"],
+        "security": [{ "bearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "servicios_ids": { "type": "array", "items": { "type": "integer" } },
+                  "fecha_vencimiento": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Cuenta de cobro creada" },
+          "400": { "description": "Datos inválidos" }
+        }
+      }
+    },
+    "/cuentas/{id}": {
+      "get": {
+        "summary": "Obtener cuenta",
+        "tags": ["Cuentas"],
+        "security": [{ "bearer": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Detalle de la cuenta" }
+        }
+      }
+    },
+    "/cuentas/{id}/pdf": {
+      "get": {
+        "summary": "Descargar PDF",
+        "tags": ["Cuentas"],
+        "security": [{ "bearer": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF generado",
+            "content": { "application/pdf": {} }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string" },
+          "status": { "type": "integer" },
+          "errors": { "type": "object" }
+        }
+      }
+    }
+  }
+}
