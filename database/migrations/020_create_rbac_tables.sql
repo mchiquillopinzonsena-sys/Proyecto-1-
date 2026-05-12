@@ -89,6 +89,11 @@ INSERT INTO permisos (nombre, descripcion, recurso, accion, activo) VALUES
 ('cuentas.actualizar', 'Actualizar cuentas de cobro', 'cuentas', 'actualizar', 1),
 ('cuentas.pagar', 'Registrar pagos', 'cuentas', 'pagar', 1),
 
+-- Cotizador
+('cotizador.crear', 'Crear parametros y equipos del cotizador', 'cotizador', 'crear', 1),
+('cotizador.leer', 'Ver catalogos y simular cotizaciones', 'cotizador', 'leer', 1),
+('cotizador.actualizar', 'Actualizar parametros y equipos del cotizador', 'cotizador', 'actualizar', 1),
+
 -- Stock
 ('stock.leer', 'Ver stock', 'stock', 'leer', 1),
 ('stock.actualizar', 'Actualizar stock', 'stock', 'actualizar', 1),
@@ -122,12 +127,12 @@ SELECT r.id, p.id FROM roles r, permisos p WHERE r.nombre = 'admin' AND p.activo
 -- Técnico: servicios, stock
 INSERT INTO rol_permisos (rol_id, permiso_id)
 SELECT r.id, p.id FROM roles r, permisos p WHERE r.nombre = 'tecnico'
-AND p.nombre IN ('servicios.leer', 'servicios.actualizar', 'servicios.cambiar_estado', 'stock.leer');
+AND p.nombre IN ('servicios.leer', 'servicios.actualizar', 'servicios.cambiar_estado', 'stock.leer', 'cotizador.leer');
 
 -- Cliente: ver sus servicios y cuentas
 INSERT INTO rol_permisos (rol_id, permiso_id)
 SELECT r.id, p.id FROM roles r, permisos p WHERE r.nombre = 'cliente'
-AND p.nombre IN ('servicios.leer', 'cuentas.leer');
+AND p.nombre IN ('servicios.leer', 'cuentas.leer', 'cotizador.leer');
 
 -- Gerente: todo excepto delete y admin
 INSERT INTO rol_permisos (rol_id, permiso_id)

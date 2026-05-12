@@ -8,12 +8,29 @@
 
 namespace App\Services;
 
+use App\Enums\UserRoles;
 use PDO;
 
 class RBACService
 {
     private static array $userPermissionsCache = [];
     private const CACHE_DURATION = 3600; // 1 hora
+
+    private const LEGACY_ROLE_PERMISSIONS = [
+        UserRoles::ADMIN => ['*'],
+        UserRoles::TECNICO => [
+            'servicios.leer',
+            'servicios.actualizar',
+            'servicios.cambiar_estado',
+            'stock.leer',
+            'cotizador.leer',
+        ],
+        UserRoles::CLIENTE => [
+            'servicios.leer',
+            'cuentas.leer',
+            'cotizador.leer',
+        ],
+    ];
 
     public function __construct(private readonly PDO $pdo)
     {
@@ -89,6 +106,10 @@ class RBACService
 
         $permissions = is_array($result) ? $result : [];
 
+        if ($permissions === []) {
+            $permissions = $this->getLegacyRolePermissions($userId);
+        }
+
         // Cachear en memoria
         self::$userPermissionsCache[$cacheKey] = $permissions;
 
@@ -111,7 +132,18 @@ class RBACService
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$userId]);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($roles !== []) {
+            return $roles;
+        }
+
+        $stmt = $this->pdo->prepare('SELECT rol FROM usuarios WHERE id = ? AND activo = 1 LIMIT 1');
+        $stmt->execute([$userId]);
+        $role = $stmt->fetchColumn();
+
+        return is_string($role) && $role !== ''
+            ? [['id' => 0, 'nombre' => $role, 'descripcion' => 'Rol heredado de usuarios.rol']]
+            : [];
     }
 
     /**
@@ -126,8 +158,13 @@ class RBACService
     public function assignRoleToUser(int $userId, int $roleId, int $assignedById, ?string $reason = null): void
     {
         // Verificar que usuario y rol existan
-        $userExists = $this->pdo->prepare('SELECT id FROM usuarios WHERE id = ?')->execute([$userId])->fetchColumn();
-        $roleExists = $this->pdo->prepare('SELECT id FROM roles WHERE id = ?')->execute([$roleId])->fetchColumn();
+        $userStmt = $this->pdo->prepare('SELECT id FROM usuarios WHERE id = ?');
+        $userStmt->execute([$userId]);
+        $userExists = $userStmt->fetchColumn();
+
+        $roleStmt = $this->pdo->prepare('SELECT id FROM roles WHERE id = ?');
+        $roleStmt->execute([$roleId]);
+        $roleExists = $roleStmt->fetchColumn();
 
         if (!$userExists || !$roleExists) {
             throw new \Exception('Usuario o rol no encontrado');
@@ -168,5 +205,52 @@ class RBACService
         } else {
             self::$userPermissionsCache = [];
         }
+    }
+
+    private function getLegacyRolePermissions(int $userId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT rol FROM usuarios WHERE id = ? AND activo = 1 LIMIT 1');
+        $stmt->execute([$userId]);
+        $role = $stmt->fetchColumn();
+
+        if (!is_string($role) || !isset(self::LEGACY_ROLE_PERMISSIONS[$role])) {
+            return [];
+        }
+
+        if (self::LEGACY_ROLE_PERMISSIONS[$role] === ['*']) {
+            $stmt = $this->pdo->query('SELECT nombre FROM permisos WHERE activo = 1 ORDER BY nombre');
+            $permissions = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+
+            if (is_array($permissions) && $permissions !== []) {
+                return $permissions;
+            }
+
+            return [
+                'admin.configuracion',
+                'admin.usuarios',
+                'cotizador.actualizar',
+                'cotizador.crear',
+                'cotizador.leer',
+                'cuentas.actualizar',
+                'cuentas.crear',
+                'cuentas.leer',
+                'cuentas.pagar',
+                'reportes.exportar',
+                'reportes.leer',
+                'servicios.actualizar',
+                'servicios.cambiar_estado',
+                'servicios.crear',
+                'servicios.eliminar',
+                'servicios.leer',
+                'stock.actualizar',
+                'stock.leer',
+                'usuarios.actualizar',
+                'usuarios.crear',
+                'usuarios.eliminar',
+                'usuarios.leer',
+            ];
+        }
+
+        return self::LEGACY_ROLE_PERMISSIONS[$role];
     }
 }

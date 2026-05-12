@@ -6,17 +6,21 @@ http://localhost/intermica-api/api/v1
 ```
 
 ## Autenticación
-Todas las peticiones (excepto Login) requieren JWT en header:
+Todas las peticiones protegidas requieren JWT:
+
 ```
 Authorization: Bearer {access_token}
 ```
 
+Las respuestas JSON siguen el formato de `ResponseHelper`: `success`, `status`, `message`, `data` (y opcionalmente `pagination` o `errors`).
+
 ---
 
-## 🔐 AUTH ENDPOINTS
+## 🔐 AUTH (`/api/v1`)
 
-### POST /auth/login
-Autenticación de usuario.
+Rutas públicas (sin JWT): `GET /api/v1/health`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`.
+
+### POST /api/v1/auth/login
 
 **Request:**
 ```json
@@ -26,28 +30,21 @@ Autenticación de usuario.
 }
 ```
 
-**Response (200):**
+**Response (200):** `data` contiene directamente los tokens.
+
 ```json
 {
   "success": true,
   "data": {
-    "usuario": {
-      "id": 1,
-      "email": "usuario@example.com",
-      "nombre": "Juan Pérez",
-      "rol": "tecnico"
-    },
-    "tokens": {
-      "access_token": "eyJhbGc...",
-      "refresh_token": "eyJhbGc...",
-      "expires_in": 3600
-    }
+    "access_token": "eyJhbGc...",
+    "refresh_token": "eyJhbGc...",
+    "expires_in": 3600,
+    "token_type": "Bearer"
   }
 }
 ```
 
-### POST /auth/refresh
-Refrescar token expirado.
+### POST /api/v1/auth/refresh
 
 **Request:**
 ```json
@@ -56,70 +53,47 @@ Refrescar token expirado.
 }
 ```
 
-### POST /auth/logout
-Cerrar sesión.
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Sesión cerrada exitosamente"
-}
-```
+Misma forma de `data` que en el login. El servidor rota la sesión en `sesiones_jwt`.
 
 ---
 
-## 👥 USUARIOS ENDPOINTS
+## 👥 USUARIOS (`/api/v1/usuarios`)
 
-### GET /usuarios
-Listar todos los usuarios (Admin only).
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/api/v1/usuarios/me` | admin, técnico, cliente | Perfil del usuario autenticado (sin `password_hash`) |
+| GET | `/api/v1/usuarios` | **admin** | Lista paginada |
+| GET | `/api/v1/usuarios/{id}` | admin (cualquiera), técnico/cliente (**solo su id**) | Detalle |
+| POST | `/api/v1/usuarios` | **admin** | Alta de usuario |
+| PATCH | `/api/v1/usuarios/{id}` | admin (campos amplios) o el propio usuario (perfil limitado) | Actualización |
+| DELETE | `/api/v1/usuarios/{id}` | **admin** | Borrado lógico (`activo = 0`; no sobre sí mismo) |
 
-**Query Params:**
-- `page` (int): Página de resultados
-- `per_page` (int): Items por página
-- `rol` (string): Filtrar por rol
-- `activo` (boolean): Filtrar activos
+**Query (GET lista):** `page`, `per_page`, `rol` (`admin` \| `tecnico` \| `cliente`), `activo` (0 o 1).
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "usuarios": [...],
-    "pagination": {
-      "page": 1,
-      "per_page": 30,
-      "total": 150
-    }
-  }
-}
-```
+**Response lista:** usa `pagination` estándar (`page`, `per_page`, `total`, `total_pages`); el arreglo de filas va en `data`.
 
-### POST /usuarios
-Crear nuevo usuario (Admin only).
+**POST crear (admin):**
 
-**Request:**
 ```json
 {
   "email": "nuevo@example.com",
-  "nombre": "Nuevo Usuario",
-  "password": "contraseña_segura",
-  "rol": "tecnico"
+  "nombre_completo": "Nuevo Usuario",
+  "password": "mínimo_8_caracteres",
+  "rol": "tecnico",
+  "telefono": "",
+  "direccion": ""
 }
 ```
 
-### GET /usuarios/{id}
-Obtener detalle de usuario.
+(`nombre` se acepta como alias de `nombre_completo`.)
 
-### PUT /usuarios/{id}
-Actualizar usuario.
-
-### DELETE /usuarios/{id}
-Desactivar usuario (Borrado lógico).
+**PATCH:** el **admin** puede cambiar `email`, `nombre_completo`, `rol`, `telefono`, `direccion`, `activo`, `password`. Un **no admin** solo `nombre_completo`, `telefono`, `direccion`, `password` sobre su propio `id`.
 
 ---
 
-## 🔧 TÉCNICOS ENDPOINTS
+## 🔧 TÉCNICOS ENDPOINTS (planeado)
+
+Estos endpoints aún no están expuestos en `backend/routes/api.php`.
 
 ### GET /tecnicos
 Listar técnicos con disponibilidad.
@@ -150,98 +124,56 @@ Crear bloqueo de agenda (RN-13/14).
 
 ---
 
-## 📋 SERVICIOS ENDPOINTS
+## 📋 SERVICIOS (`/api/v1/servicios`)
 
-### GET /servicios
-Listar servicios con filtros.
+Implementado en el router PHP.
 
-**Query Params:**
-- `estado` (string): pendiente, asignado, en_progreso, completado
-- `tecnico_id` (int): Filtrar por técnico
-- `cliente_id` (int): Filtrar por cliente
+| Método | Ruta | Roles | Notas |
+|--------|------|-------|--------|
+| GET | `/api/v1/servicios` | admin, técnico, cliente | El rol **cliente** solo ve servicios de su empresa (`clientes.usuario_id`) |
+| GET | `/api/v1/servicios/{id}` | admin, técnico, cliente | Misma regla de alcance para cliente |
+| PATCH | `/api/v1/servicios/{id}/estado` | admin, técnico | Body: `{ "estado": "completado" }`. Si pasa a **completado**, se ejecutan **RN-02** (stock) y **RN-06** (cuenta de cobro) en transacción cuando aplique |
 
-### POST /servicios
-Crear nuevo servicio.
+Los estados válidos en base de datos son: `pendiente`, `programado`, `en_proceso`, `completado`, `cancelado`.
 
-**Request:**
-```json
-{
-  "cliente_id": 5,
-  "descripcion": "Inspección térmica",
-  "tipo_servicio": "inspeccion",
-  "fecha_programada": "2026-05-15T10:00:00Z",
-  "ubicacion": "Carrera 5 #12-34",
-  "items": [
-    {
-      "descripcion": "Análisis termográfico",
-      "cantidad": 4,
-      "unidad": "horas"
-    }
-  ]
-}
-```
+### POST /servicios (planeado)
 
-### PUT /servicios/{id}/estado
-Actualizar estado del servicio (RN-16: Auditoría).
-
-**Request:**
-```json
-{
-  "estado": "completado",
-  "notas": "Servicio completado exitosamente"
-}
-```
+Alta de servicio con ítems: aún no expuesto en el router mínimo; usar migraciones y lógica de dominio al ampliar el API.
 
 ---
 
-## 💰 CUENTAS DE COBRO ENDPOINTS
+## 💰 CUENTAS DE COBRO (`/api/v1/cuentas`)
 
-### GET /cuentas
-Listar cuentas de cobro.
+### POST /api/v1/cuentas
 
-**Query Params:**
-- `estado` (string): pendiente, pagada, vencida
-- `cliente_id` (int): Filtrar por cliente
+**Rol:** admin.
 
-### POST /cuentas
-Generar cuenta de cobro (RN-06: Generación automática CC-YYYY-XXXX).
+Genera una cuenta de cobro (RN-06) para uno o más servicios **ya completados** del **mismo cliente**. El número `CC-YYYY-XXXX` lo asigna el trigger vía `secuencias_documento`.
 
 **Request:**
 ```json
 {
-  "cliente_id": 5,
   "servicios_ids": [42, 43],
-  "fecha_vencimiento": "2026-06-10",
-  "notas": "Facturación mensual"
+  "fecha_vencimiento": "2026-06-10"
 }
 ```
 
-**Response (201):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "numero": "CC-2026-0001",
-    "cliente_id": 5,
-    "total": 2975000.00,
-    "estado": "pendiente"
-  }
-}
-```
+`fecha_vencimiento` es opcional (por defecto +30 días en servidor).
 
-### GET /cuentas/{id}
-Obtener detalle de cuenta (con QR y PDF).
+**Response (201):** `data` incluye `id`, `numero`, `total`.
 
-### GET /cuentas/{id}/pdf
-Descargar PDF de cuenta de cobro.
+### Rutas adicionales
 
-### GET /cuentas/{id}/qr
-Obtener QR dinámico de cuenta.
+- `GET /api/v1/cuentas/{id}`: detalle de cuenta.
+- `PATCH /api/v1/cuentas/{id}/pagar`: registra pago.
+- `GET /api/v1/cuentas/{id}/pdf`: ruta creada, PDF pendiente de implementación (`501`).
+- `GET /api/v1/cuentas`: listado planeado.
 
 ---
 
-## 📊 REPORTES ENDPOINTS
+## 📊 REPORTES ENDPOINTS (planeado)
+
+Estos endpoints aún no están expuestos en `backend/routes/api.php`.
 
 ### GET /reportes/auditoria
 Obtener logs de auditoría (RN-16).
@@ -260,34 +192,61 @@ Reporte de ingresos por período.
 
 ---
 
-## ⚙️ PARÁMETROS ENDPOINTS
+## ⚙️ COTIZADOR (`/api/v1/cotizador`)
 
-### GET /parametros/cotizador
-Obtener parámetros del cotizador inteligente.
+Catálogo en tablas `parametros_cotizador` y `parametros_equipos`. La simulación aplica parámetros **activos** cuyo `tipo_parametro` contiene `porcentaje` / `percent` (sobre el subtotal de equipos) o `fijo` / `valor_fijo` (suma), luego IVA 19 %.
 
-**Response:**
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/api/v1/cotizador/parametros` | admin, técnico, cliente | Lista parámetros con `activo = 1` |
+| GET | `/api/v1/cotizador/equipos` | admin, técnico, cliente | Lista equipos con `activo = 1` |
+| POST | `/api/v1/cotizador/cotizar` | admin, técnico, cliente | Simulación de totales |
+| POST | `/api/v1/cotizador/parametros` | **admin** | Planeado: crear parámetro |
+| POST | `/api/v1/cotizador/equipos` | **admin** | Planeado: crear equipo |
+| PATCH | `/api/v1/cotizador/parametros/{id}` | **admin** | Actualizar parámetro |
+| PATCH | `/api/v1/cotizador/equipos/{id}` | **admin** | Actualizar equipo |
+
+### POST /api/v1/cotizador/cotizar
+
+**Request:**
 ```json
 {
-  "success": true,
-  "data": {
-    "equipos": [
-      {
-        "id": 1,
-        "nombre": "Motores Eléctricos",
-        "valor_base": 250000,
-        "tiempo_estimado": 240
-      }
-    ],
-    "multiplicadores": {
-      "urgencia": 1.5,
-      "accesibilidad_alta": 1.3
-    }
-  }
+  "equipos": [
+    { "equipo_id": 1, "cantidad": 2 }
+  ]
 }
 ```
 
-### PUT /parametros/cotizador
-Actualizar parámetros (Admin only).
+**Response:** `subtotal_equipos`, `ajustes_parametros`, `subtotal_con_ajustes`, `iva_19`, `total`, `lineas`.
+
+### POST /api/v1/cotizador/parametros (admin)
+
+**Request (campos principales):**
+```json
+{
+  "codigo": "RECARGO_URGENCIA",
+  "nombre": "Recargo urgencia",
+  "descripcion": "Opcional",
+  "tipo_parametro": "porcentaje",
+  "valor_base": 10,
+  "unidad": "%",
+  "activo": 1
+}
+```
+
+### POST /api/v1/cotizador/equipos (admin)
+
+**Request:**
+```json
+{
+  "nombre_equipo": "Caldera industrial",
+  "tipo_equipo": "caldera",
+  "valor_inspeccion_base": 250000,
+  "tiempo_inspeccion_minutos": 120,
+  "complejidad": "media",
+  "activo": 1
+}
+```
 
 ---
 
@@ -305,17 +264,14 @@ Actualizar parámetros (Admin only).
 | 422 | Validación fallida |
 | 500 | Error interno |
 
-## 🔄 Códigos de Estado de Servicio
+## 🔄 Códigos de Estado de Servicio (BD)
 
-- `pendiente`: En espera de asignación
-- `asignado`: Técnico asignado
-- `en_progreso`: Técnico trabajando
-- `completado`: Servicio finalizado
-- `cancelado`: Servicio cancelado
+- `pendiente`: En espera
+- `programado`: Fecha u horario definidos
+- `en_proceso`: En ejecución
+- `completado`: Finalizado (dispara reglas RN-02 / RN-06 cuando corresponde)
+- `cancelado`: Cancelado
 
-## 💳 Códigos de Estado de Cuenta
+## 💳 Códigos de Estado de Cuenta (BD)
 
-- `pendiente`: No pagada
-- `pagada`: Pago recibido
-- `vencida`: Pasada la fecha de vencimiento
-- `anulada`: Cancelada (Borrado lógico)
+- `pendiente`, `parcial`, `pagada`, `vencida`, `cancelada` (ver migración `cuentas_cobro`)

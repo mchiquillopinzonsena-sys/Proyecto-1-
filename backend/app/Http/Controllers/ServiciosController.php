@@ -137,7 +137,7 @@ class ServiciosController extends BaseController
     {
         // Si no es cliente, sin scope (admin/técnico ven todo)
         $roles = \App\Middleware\RBACMiddleware::getUserRoles($this->pdo, $this->ctx->userId);
-        $isCliente = collect($roles)->pluck('nombre')->contains('cliente');
+        $isCliente = in_array('cliente', array_column($roles, 'nombre'), true);
 
         if (!$isCliente) {
             return null;

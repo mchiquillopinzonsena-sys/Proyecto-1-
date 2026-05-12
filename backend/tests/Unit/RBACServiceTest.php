@@ -18,6 +18,8 @@ class RBACServiceTest extends TestCase
 
     protected function setUp(): void
     {
+        RBACService::clearCache();
+
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -54,11 +56,11 @@ class RBACServiceTest extends TestCase
             ->execute([1, 'user@test.com']);
 
         $this->pdo->prepare('INSERT INTO permisos (id, nombre, recurso, accion, activo) VALUES (?, ?, ?, ?, 1)')
-            ->execute([1, 'servicios.crear', 'servicios', 'crear', 1]);
+            ->execute([1, 'servicios.crear', 'servicios', 'crear']);
         $this->pdo->prepare('INSERT INTO permisos (id, nombre, recurso, accion, activo) VALUES (?, ?, ?, ?, 1)')
-            ->execute([2, 'servicios.leer', 'servicios', 'leer', 1]);
+            ->execute([2, 'servicios.leer', 'servicios', 'leer']);
         $this->pdo->prepare('INSERT INTO permisos (id, nombre, recurso, accion, activo) VALUES (?, ?, ?, ?, 1)')
-            ->execute([3, 'usuarios.eliminar', 'usuarios', 'eliminar', 1]);
+            ->execute([3, 'usuarios.eliminar', 'usuarios', 'eliminar']);
 
         $this->pdo->prepare('INSERT INTO roles (id, nombre, activo) VALUES (?, ?, 1)')
             ->execute([1, 'admin']);

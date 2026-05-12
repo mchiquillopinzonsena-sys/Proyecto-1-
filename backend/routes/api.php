@@ -14,11 +14,17 @@ use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
 use App\Helpers\JWTHelper;
 use App\Helpers\ResponseHelper;
-use App\Http\RequestContext;
 use App\Middleware\AuthMiddleware;
-use App\Middleware\RateLimitMiddleware;
 use App\Services\AuthService;
 use Database\Database;
+
+$jwtSecret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?: '';
+if ($jwtSecret === '' || $jwtSecret === false) {
+    http_response_code(500);
+    echo json_encode(ResponseHelper::error('JWT_SECRET no configurado', 500));
+    exit;
+}
+JWTHelper::setSecret($jwtSecret);
 
 // Parse path y method
 $path = $path ?? (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
@@ -98,6 +104,61 @@ try {
 
     // Router de endpoints protegidos
     switch (true) {
+        // GET /api/v1/usuarios/me
+        case $method === 'GET' && $path === '/api/v1/usuarios/me':
+            (new \App\Http\Controllers\UsuariosController($pdo, $ctx))->me();
+            exit;
+
+        // GET /api/v1/usuarios
+        case $method === 'GET' && $path === '/api/v1/usuarios':
+            (new \App\Http\Controllers\UsuariosController($pdo, $ctx))->index();
+            exit;
+
+        // GET /api/v1/usuarios/:id
+        case $method === 'GET' && preg_match('#^/api/v1/usuarios/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\UsuariosController($pdo, $ctx))->show((int) $m[1]);
+            exit;
+
+        // POST /api/v1/usuarios
+        case $method === 'POST' && $path === '/api/v1/usuarios':
+            (new \App\Http\Controllers\UsuariosController($pdo, $ctx))->store();
+            exit;
+
+        // PATCH /api/v1/usuarios/:id
+        case $method === 'PATCH' && preg_match('#^/api/v1/usuarios/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\UsuariosController($pdo, $ctx))->update((int) $m[1]);
+            exit;
+
+        // DELETE /api/v1/usuarios/:id
+        case $method === 'DELETE' && preg_match('#^/api/v1/usuarios/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\UsuariosController($pdo, $ctx))->destroy((int) $m[1]);
+            exit;
+
+        // GET /api/v1/cotizador/parametros
+        case $method === 'GET' && $path === '/api/v1/cotizador/parametros':
+            (new \App\Http\Controllers\CotizadorController($pdo, $ctx))->parametros();
+            exit;
+
+        // GET /api/v1/cotizador/equipos
+        case $method === 'GET' && $path === '/api/v1/cotizador/equipos':
+            (new \App\Http\Controllers\CotizadorController($pdo, $ctx))->equipos();
+            exit;
+
+        // POST /api/v1/cotizador/cotizar
+        case $method === 'POST' && $path === '/api/v1/cotizador/cotizar':
+            (new \App\Http\Controllers\CotizadorController($pdo, $ctx))->cotizar();
+            exit;
+
+        // PATCH /api/v1/cotizador/parametros/:id
+        case $method === 'PATCH' && preg_match('#^/api/v1/cotizador/parametros/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\CotizadorController($pdo, $ctx))->updateParametro((int) $m[1]);
+            exit;
+
+        // PATCH /api/v1/cotizador/equipos/:id
+        case $method === 'PATCH' && preg_match('#^/api/v1/cotizador/equipos/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\CotizadorController($pdo, $ctx))->updateEquipo((int) $m[1]);
+            exit;
+
         // GET /api/v1/servicios
         case $method === 'GET' && $path === '/api/v1/servicios':
             (new \App\Http\Controllers\ServiciosController($pdo, $ctx))->index();

@@ -25,5 +25,14 @@
       "App\\": "app/",
       "Database\\": "database/"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit tests/Unit",
+    "test:unit": "phpunit tests/Unit"
   }
 }

@@ -36,6 +36,7 @@ class AuthServiceTest extends TestCase
                 id INTEGER PRIMARY KEY,
                 usuario_id INTEGER,
                 token_hash TEXT UNIQUE,
+                refresh_token_hash TEXT,
                 ip_address TEXT,
                 user_agent TEXT,
                 fecha_inicio DATETIME,
