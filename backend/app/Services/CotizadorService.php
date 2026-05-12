@@ -20,6 +20,17 @@ class CotizadorService
      */
     public function listarParametrosActivos(): array
     {
+        if ($this->legacyCotizador()) {
+            $st = $this->pdo->query(
+                'SELECT id_param AS id, CONCAT(tipo_proyecto, "_", nombre_param) AS codigo,
+                        nombre_param AS nombre, descripcion, tipo_proyecto AS tipo_parametro,
+                        valor AS valor_base, unidad, activo, actualizado_en AS created_at
+                 FROM parametros_cotizador WHERE activo = 1 ORDER BY tipo_proyecto ASC, nombre_param ASC'
+            );
+
+            return $st->fetchAll(PDO::FETCH_ASSOC);
+        }
+
         $st = $this->pdo->query(
             'SELECT id, codigo, nombre, descripcion, tipo_parametro, valor_base, unidad, activo, created_at
              FROM parametros_cotizador WHERE activo = 1 ORDER BY codigo ASC'
@@ -33,6 +44,34 @@ class CotizadorService
      */
     public function listarEquiposActivos(): array
     {
+        if (!$this->hasTable('parametros_equipos')) {
+            $st = $this->pdo->query(
+                'SELECT tipo_proyecto, COALESCE(SUM(valor), 0) AS valor_base, COUNT(*) AS total_parametros
+                 FROM parametros_cotizador
+                 WHERE activo = 1
+                 GROUP BY tipo_proyecto
+                 ORDER BY tipo_proyecto ASC'
+            );
+
+            $rows = [];
+            $id = 1;
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $rows[] = [
+                    'id' => $id++,
+                    'nombre_equipo' => ucfirst((string) $row['tipo_proyecto']),
+                    'tipo_equipo' => $row['tipo_proyecto'],
+                    'valor_inspeccion_base' => round((float) $row['valor_base'], 2),
+                    'tiempo_inspeccion_minutos' => null,
+                    'complejidad' => 'base',
+                    'activo' => 1,
+                    'created_at' => null,
+                    'total_parametros' => (int) $row['total_parametros'],
+                ];
+            }
+
+            return $rows;
+        }
+
         $st = $this->pdo->query(
             'SELECT id, nombre_equipo, tipo_equipo, valor_inspeccion_base, tiempo_inspeccion_minutos, complejidad, activo, created_at
              FROM parametros_equipos WHERE activo = 1 ORDER BY nombre_equipo ASC'
@@ -62,12 +101,7 @@ class CotizadorService
             if ($eqId < 1 || $qty <= 0) {
                 throw new ValidationException("Línea {$idx}: equipo_id y cantidad (>0) son obligatorios");
             }
-            $st = $this->pdo->prepare(
-                'SELECT id, nombre_equipo, valor_inspeccion_base, tiempo_inspeccion_minutos
-                 FROM parametros_equipos WHERE id = ? AND activo = 1 LIMIT 1'
-            );
-            $st->execute([$eqId]);
-            $eq = $st->fetch(PDO::FETCH_ASSOC);
+            $eq = $this->obtenerEquipoCotizable($eqId);
             if (!$eq) {
                 throw new NotFoundException("Equipo id {$eqId} no encontrado o inactivo");
             }
@@ -132,6 +166,10 @@ class CotizadorService
      */
     public function actualizarParametro(int $id, array $data): array
     {
+        if ($this->legacyCotizador()) {
+            return $this->actualizarParametroLegacy($id, $data);
+        }
+
         $st = $this->pdo->prepare('SELECT id FROM parametros_cotizador WHERE id = ? LIMIT 1');
         $st->execute([$id]);
         if (!$st->fetchColumn()) {
@@ -171,6 +209,10 @@ class CotizadorService
      */
     public function actualizarEquipo(int $id, array $data): array
     {
+        if (!$this->hasTable('parametros_equipos')) {
+            throw new NotFoundException('Catalogo de equipos no disponible en esta base de datos');
+        }
+
         $st = $this->pdo->prepare('SELECT id FROM parametros_equipos WHERE id = ? LIMIT 1');
         $st->execute([$id]);
         if (!$st->fetchColumn()) {
@@ -210,6 +252,22 @@ class CotizadorService
      */
     private function obtenerParametroPorId(int $id): array
     {
+        if ($this->legacyCotizador()) {
+            $st = $this->pdo->prepare(
+                'SELECT id_param AS id, CONCAT(tipo_proyecto, "_", nombre_param) AS codigo,
+                        nombre_param AS nombre, descripcion, tipo_proyecto AS tipo_parametro,
+                        valor AS valor_base, unidad, activo, actualizado_en AS created_at
+                 FROM parametros_cotizador WHERE id_param = ? LIMIT 1'
+            );
+            $st->execute([$id]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                throw new NotFoundException('Parametro no encontrado');
+            }
+
+            return $row;
+        }
+
         $st = $this->pdo->prepare('SELECT * FROM parametros_cotizador WHERE id = ? LIMIT 1');
         $st->execute([$id]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
@@ -233,5 +291,113 @@ class CotizadorService
         }
 
         return $row;
+    }
+
+    private function obtenerEquipoCotizable(int $id): ?array
+    {
+        if ($this->hasTable('parametros_equipos')) {
+            $st = $this->pdo->prepare(
+                'SELECT id, nombre_equipo, valor_inspeccion_base, tiempo_inspeccion_minutos
+                 FROM parametros_equipos WHERE id = ? AND activo = 1 LIMIT 1'
+            );
+            $st->execute([$id]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        }
+
+        $equipos = $this->listarEquiposActivos();
+        foreach ($equipos as $equipo) {
+            if ((int) $equipo['id'] === $id) {
+                return [
+                    'id' => $equipo['id'],
+                    'nombre_equipo' => $equipo['nombre_equipo'],
+                    'valor_inspeccion_base' => $equipo['valor_inspeccion_base'],
+                    'tiempo_inspeccion_minutos' => null,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function actualizarParametroLegacy(int $id, array $data): array
+    {
+        $st = $this->pdo->prepare('SELECT id_param FROM parametros_cotizador WHERE id_param = ? LIMIT 1');
+        $st->execute([$id]);
+        if (!$st->fetchColumn()) {
+            throw new NotFoundException('Parametro no encontrado');
+        }
+
+        $sets = [];
+        $params = [];
+        if (array_key_exists('nombre', $data)) {
+            $sets[] = 'nombre_param = ?';
+            $params[] = trim((string) $data['nombre']);
+        }
+        if (array_key_exists('descripcion', $data)) {
+            $sets[] = 'descripcion = ?';
+            $params[] = $data['descripcion'] !== null ? trim((string) $data['descripcion']) : null;
+        }
+        if (array_key_exists('tipo_parametro', $data)) {
+            $sets[] = 'tipo_proyecto = ?';
+            $params[] = trim((string) $data['tipo_parametro']);
+        }
+        if (array_key_exists('valor_base', $data)) {
+            $sets[] = 'valor = ?';
+            $params[] = $data['valor_base'];
+        }
+        if (array_key_exists('unidad', $data)) {
+            $sets[] = 'unidad = ?';
+            $params[] = trim((string) $data['unidad']);
+        }
+        if (array_key_exists('activo', $data)) {
+            $sets[] = 'activo = ?';
+            $params[] = (int) ((bool) $data['activo']);
+        }
+
+        if ($sets !== []) {
+            $params[] = $id;
+            $this->pdo->prepare('UPDATE parametros_cotizador SET ' . implode(', ', $sets) . ' WHERE id_param = ?')->execute($params);
+        }
+
+        return $this->obtenerParametroPorId($id);
+    }
+
+    private function legacyCotizador(): bool
+    {
+        return $this->hasColumn('parametros_cotizador', 'id_param') && !$this->hasColumn('parametros_cotizador', 'id');
+    }
+
+    private function hasTable(string $table): bool
+    {
+        static $cache = [];
+        if (array_key_exists($table, $cache)) {
+            return $cache[$table];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('SHOW TABLES LIKE ?');
+            $stmt->execute([$table]);
+            return $cache[$table] = (bool) $stmt->fetch(PDO::FETCH_NUM);
+        } catch (\Throwable) {
+            return $cache[$table] = false;
+        }
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        static $cache = [];
+        $key = "{$table}.{$column}";
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("SHOW COLUMNS FROM {$table} LIKE ?");
+            $stmt->execute([$column]);
+            return $cache[$key] = (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return $cache[$key] = false;
+        }
     }
 }

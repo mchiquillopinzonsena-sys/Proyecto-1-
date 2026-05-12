@@ -89,6 +89,10 @@ class RBACService
             return self::$userPermissionsCache[$cacheKey];
         }
 
+        if (!$this->hasTable('permisos') || !$this->hasTable('usuario_roles')) {
+            return self::$userPermissionsCache[$cacheKey] = $this->getLegacyRolePermissions($userId);
+        }
+
         // Query: obtener todos los permisos del usuario vía roles asignados
         $sql = <<<SQL
             SELECT DISTINCT p.nombre
@@ -121,6 +125,14 @@ class RBACService
      */
     public function getUserRoles(int $userId): array
     {
+        if (!$this->hasTable('usuario_roles') || !$this->hasColumn('roles', 'id')) {
+            $role = $this->getLegacyRoleName($userId);
+
+            return $role !== null
+                ? [['id' => 0, 'nombre' => $role, 'descripcion' => 'Rol heredado']]
+                : [];
+        }
+
         $sql = <<<SQL
             SELECT r.id, r.nombre, r.descripcion
             FROM roles r
@@ -137,9 +149,7 @@ class RBACService
             return $roles;
         }
 
-        $stmt = $this->pdo->prepare('SELECT rol FROM usuarios WHERE id = ? AND activo = 1 LIMIT 1');
-        $stmt->execute([$userId]);
-        $role = $stmt->fetchColumn();
+        $role = $this->getLegacyRoleName($userId);
 
         return is_string($role) && $role !== ''
             ? [['id' => 0, 'nombre' => $role, 'descripcion' => 'Rol heredado de usuarios.rol']]
@@ -157,6 +167,10 @@ class RBACService
      */
     public function assignRoleToUser(int $userId, int $roleId, int $assignedById, ?string $reason = null): void
     {
+        if (!$this->hasTable('usuario_roles')) {
+            throw new \Exception('La base de datos actual no usa usuario_roles');
+        }
+
         // Verificar que usuario y rol existan
         $userStmt = $this->pdo->prepare('SELECT id FROM usuarios WHERE id = ?');
         $userStmt->execute([$userId]);
@@ -188,6 +202,10 @@ class RBACService
      */
     public function revokeRoleFromUser(int $userId, int $roleId): void
     {
+        if (!$this->hasTable('usuario_roles')) {
+            return;
+        }
+
         $this->pdo->prepare(
             'UPDATE usuario_roles SET activo = 0 WHERE usuario_id = ? AND rol_id = ?'
         )->execute([$userId, $roleId]);
@@ -209,17 +227,18 @@ class RBACService
 
     private function getLegacyRolePermissions(int $userId): array
     {
-        $stmt = $this->pdo->prepare('SELECT rol FROM usuarios WHERE id = ? AND activo = 1 LIMIT 1');
-        $stmt->execute([$userId]);
-        $role = $stmt->fetchColumn();
+        $role = $this->getLegacyRoleName($userId);
 
         if (!is_string($role) || !isset(self::LEGACY_ROLE_PERMISSIONS[$role])) {
             return [];
         }
 
         if (self::LEGACY_ROLE_PERMISSIONS[$role] === ['*']) {
-            $stmt = $this->pdo->query('SELECT nombre FROM permisos WHERE activo = 1 ORDER BY nombre');
-            $permissions = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            $permissions = [];
+            if ($this->hasTable('permisos')) {
+                $stmt = $this->pdo->query('SELECT nombre FROM permisos WHERE activo = 1 ORDER BY nombre');
+                $permissions = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            }
 
             if (is_array($permissions) && $permissions !== []) {
                 return $permissions;
@@ -252,5 +271,63 @@ class RBACService
         }
 
         return self::LEGACY_ROLE_PERMISSIONS[$role];
+    }
+
+    private function getLegacyRoleName(int $userId): ?string
+    {
+        if ($this->hasColumn('usuarios', 'rol')) {
+            $stmt = $this->pdo->prepare('SELECT rol FROM usuarios WHERE id = ? AND activo = 1 LIMIT 1');
+            $stmt->execute([$userId]);
+            $role = $stmt->fetchColumn();
+
+            return is_string($role) && $role !== '' ? $role : null;
+        }
+
+        if ($this->hasColumn('usuarios', 'id_usuario') && $this->hasColumn('roles', 'nombre_rol')) {
+            $stmt = $this->pdo->prepare(
+                'SELECT r.nombre_rol
+                 FROM usuarios u INNER JOIN roles r ON r.id_rol = u.id_rol
+                 WHERE u.id_usuario = ? AND u.activo = 1 LIMIT 1'
+            );
+            $stmt->execute([$userId]);
+            $role = $stmt->fetchColumn();
+
+            return is_string($role) && $role !== '' ? $role : null;
+        }
+
+        return null;
+    }
+
+    private function hasTable(string $table): bool
+    {
+        static $cache = [];
+        if (array_key_exists($table, $cache)) {
+            return $cache[$table];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('SHOW TABLES LIKE ?');
+            $stmt->execute([$table]);
+            return $cache[$table] = (bool) $stmt->fetch(PDO::FETCH_NUM);
+        } catch (\Throwable) {
+            return $cache[$table] = false;
+        }
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        static $cache = [];
+        $key = "{$table}.{$column}";
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare("SHOW COLUMNS FROM {$table} LIKE ?");
+            $stmt->execute([$column]);
+            return $cache[$key] = (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return $cache[$key] = false;
+        }
     }
 }
