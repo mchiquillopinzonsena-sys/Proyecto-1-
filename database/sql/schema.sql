@@ -373,7 +373,114 @@ CREATE TABLE configuracion_empresa (
 -- ============================================================
 CREATE INDEX idx_servicios_cliente_estado ON servicios(cliente_id, estado);
 CREATE INDEX idx_cuentas_cliente_estado ON cuentas_cobro(cliente_id, estado);
-CREATE INDEX idx_auditoria_usuario_fecha ON auditoria(usuario_id, fecha_registro);
+CREATE INDEX idx_auditoria_usuario_fecha ON auditoria(usuario_id, created_at);
+
+-- ============================================================
+-- RBAC TABLES (requeridas por RBACService.php)
+-- roles, permisos, rol_permisos, usuario_roles
+-- ============================================================
+CREATE TABLE IF NOT EXISTS roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL UNIQUE,
+  descripcion VARCHAR(255),
+  activo TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_nombre (nombre),
+  INDEX idx_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Roles del sistema RBAC';
+
+CREATE TABLE IF NOT EXISTS permisos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL UNIQUE COMMENT 'e.g. servicios.leer',
+  descripcion VARCHAR(255),
+  modulo VARCHAR(100),
+  activo TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_nombre (nombre),
+  INDEX idx_modulo (modulo),
+  INDEX idx_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Permisos atómicos del sistema';
+
+CREATE TABLE IF NOT EXISTS rol_permisos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  rol_id INT NOT NULL,
+  permiso_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_rol_permiso (rol_id, permiso_id),
+  FOREIGN KEY (rol_id) REFERENCES roles(id) ON DELETE CASCADE,
+  FOREIGN KEY (permiso_id) REFERENCES permisos(id) ON DELETE CASCADE,
+  INDEX idx_rol_id (rol_id),
+  INDEX idx_permiso_id (permiso_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Relación rol-permisos';
+
+CREATE TABLE IF NOT EXISTS usuario_roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT NOT NULL,
+  rol_id INT NOT NULL,
+  asignado_por INT,
+  razon VARCHAR(255),
+  activo TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_usuario_rol (usuario_id, rol_id),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  FOREIGN KEY (rol_id) REFERENCES roles(id) ON DELETE CASCADE,
+  FOREIGN KEY (asignado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_usuario_id (usuario_id),
+  INDEX idx_rol_id (rol_id),
+  INDEX idx_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Asignación de roles a usuarios';
+
+-- Seeds RBAC base
+INSERT IGNORE INTO roles (nombre, descripcion) VALUES
+  ('admin',   'Administrador del sistema — acceso total'),
+  ('tecnico', 'Técnico de campo'),
+  ('cliente', 'Cliente empresarial');
+
+INSERT IGNORE INTO permisos (nombre, modulo, descripcion) VALUES
+  ('admin.configuracion',    'admin',      'Configurar parámetros de empresa'),
+  ('admin.usuarios',         'admin',      'Gestión completa de usuarios'),
+  ('cotizador.leer',         'cotizador',  'Consultar cotizador'),
+  ('cotizador.crear',        'cotizador',  'Crear cotizaciones'),
+  ('cotizador.actualizar',   'cotizador',  'Editar parámetros del cotizador'),
+  ('cuentas.leer',           'cuentas',    'Ver cuentas de cobro'),
+  ('cuentas.crear',          'cuentas',    'Generar cuentas de cobro'),
+  ('cuentas.actualizar',     'cuentas',    'Editar cuentas de cobro'),
+  ('cuentas.pagar',          'cuentas',    'Registrar pagos'),
+  ('reportes.leer',          'reportes',   'Ver reportes'),
+  ('reportes.exportar',      'reportes',   'Exportar reportes'),
+  ('servicios.leer',         'servicios',  'Ver servicios'),
+  ('servicios.crear',        'servicios',  'Crear servicios'),
+  ('servicios.actualizar',   'servicios',  'Editar servicios'),
+  ('servicios.cambiar_estado','servicios', 'Cambiar estado de servicio'),
+  ('servicios.eliminar',     'servicios',  'Desactivar servicios'),
+  ('stock.leer',             'stock',      'Consultar inventario'),
+  ('stock.actualizar',       'stock',      'Modificar stock'),
+  ('usuarios.leer',          'usuarios',   'Ver listado de usuarios'),
+  ('usuarios.crear',         'usuarios',   'Crear usuarios'),
+  ('usuarios.actualizar',    'usuarios',   'Editar usuarios'),
+  ('usuarios.eliminar',      'usuarios',   'Desactivar usuarios');
+
+-- Asignar todos los permisos al rol admin
+INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+  SELECT r.id, p.id FROM roles r, permisos p WHERE r.nombre = 'admin';
+
+-- Permisos del técnico
+INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+  SELECT r.id, p.id FROM roles r
+  INNER JOIN permisos p ON p.nombre IN (
+    'servicios.leer','servicios.actualizar','servicios.cambiar_estado',
+    'stock.leer','cotizador.leer'
+  )
+  WHERE r.nombre = 'tecnico';
+
+-- Permisos del cliente
+INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+  SELECT r.id, p.id FROM roles r
+  INNER JOIN permisos p ON p.nombre IN (
+    'servicios.leer','cuentas.leer','cotizador.leer'
+  )
+  WHERE r.nombre = 'cliente';
 
 -- ============================================================
 -- FIN DEL SCHEMA

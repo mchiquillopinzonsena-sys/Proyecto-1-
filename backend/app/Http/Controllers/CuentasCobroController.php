@@ -82,7 +82,7 @@ class CuentasCobroController extends BaseController
 
     /**
      * GET /api/v1/cuentas/:id/pdf
-     * Descargar PDF de la cuenta
+     * Descargar PDF de la cuenta de cobro
      */
     public function downloadPdf(int $id): void
     {
@@ -90,14 +90,26 @@ class CuentasCobroController extends BaseController
 
         $cuenta = $this->findOrFail('cuentas_cobro', $id);
 
-        // Scope validation
+        // Scope: clientes solo acceden a sus propias cuentas
         $scope = $this->getClientScope();
         if ($scope !== null && (int) $cuenta['cliente_id'] !== $scope) {
             throw new \App\Exceptions\ForbiddenException('No puedes acceder a esta cuenta');
         }
 
-        // TODO: Generar PDF con PDFHelper
-        $this->error('PDF generation not yet implemented', 501);
+        // Obtener ítems de la cuenta
+        $stmt = $this->pdo->prepare(
+            'SELECT ci.*, s.numero_servicio
+             FROM cuentas_items ci
+             LEFT JOIN servicios s ON s.id = ci.servicio_id
+             WHERE ci.cuenta_cobro_id = ?
+             ORDER BY ci.numero_item ASC'
+        );
+        $stmt->execute([$id]);
+        $items = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Delegar generación al PDFHelper (TCPDF → Dompdf → HTML fallback)
+        \App\Helpers\PDFHelper::streamCuentaCobro($cuenta, $items);
+        exit;
     }
 
     /**

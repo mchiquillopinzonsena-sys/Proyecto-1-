@@ -193,6 +193,31 @@ try {
         case $method === 'PATCH' && preg_match('#^/api/v1/cuentas/(\d+)/pagar$#', $path, $m):
             (new \App\Http\Controllers\CuentasCobroController($pdo, $ctx))->registerPayment((int) $m[1]);
             exit;
+
+        // GET /api/v1/stock
+        case $method === 'GET' && $path === '/api/v1/stock':
+            (new \App\Http\Controllers\StockController($pdo, $ctx))->index();
+            exit;
+
+        // GET /api/v1/stock/:id
+        case $method === 'GET' && preg_match('#^/api/v1/stock/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\StockController($pdo, $ctx))->show((int) $m[1]);
+            exit;
+
+        // POST /api/v1/stock
+        case $method === 'POST' && $path === '/api/v1/stock':
+            (new \App\Http\Controllers\StockController($pdo, $ctx))->store();
+            exit;
+
+        // PATCH /api/v1/stock/:id
+        case $method === 'PATCH' && preg_match('#^/api/v1/stock/(\d+)$#', $path, $m):
+            (new \App\Http\Controllers\StockController($pdo, $ctx))->update((int) $m[1]);
+            exit;
+
+        // GET /api/v1/stock/:id/movimientos
+        case $method === 'GET' && preg_match('#^/api/v1/stock/(\d+)/movimientos$#', $path, $m):
+            (new \App\Http\Controllers\StockController($pdo, $ctx))->movimientos((int) $m[1]);
+            exit;
     }
 
     // 404 - Ruta no encontrada

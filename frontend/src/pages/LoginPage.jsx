@@ -82,12 +82,14 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-sm text-gray-600">
-          <p className="mb-2"><strong>Credenciales de Demo:</strong></p>
-          <p>Admin: admin@intermica.com / Admin123!</p>
-          <p>Técnico: tecnico@intermica.com / Tecnico123!</p>
-          <p>Cliente: cliente@intermica.com / Cliente123!</p>
-        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 text-xs text-gray-400 border-t pt-4">
+            <p className="font-semibold mb-1">Credenciales de desarrollo:</p>
+            <p>admin@intermica.com / Admin123!</p>
+            <p>tecnico@intermica.com / Tecnico123!</p>
+            <p>cliente@intermica.com / Cliente123!</p>
+          </div>
+        )}
       </div>
     </div>
   );

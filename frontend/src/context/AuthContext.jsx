@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { apiRequest, getAccessToken, setAccessToken } from './client';
+import { apiRequest, setAccessToken } from '../api/client';
 
 // Context para autenticación
 const AuthContext = createContext(null);
