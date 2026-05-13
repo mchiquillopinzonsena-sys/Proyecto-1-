@@ -42,6 +42,33 @@ class ServiciosController extends BaseController
     }
 
     /**
+     * POST /api/v1/servicios
+     * Crear nuevo servicio
+     */
+    public function store(): void
+    {
+        $this->authorize('servicios.crear');
+        $body = $this->getJSON();
+
+        $cliente_id = $body['cliente_id'] ?? null;
+        $desc = $body['descripcion'] ?? '';
+        $fecha = $body['fecha_solicitud'] ?? date('Y-m-d');
+        $valor = $body['valor_estimado'] ?? 0;
+
+        if (!$cliente_id || !$desc) {
+            throw new \App\Exceptions\ValidationException('cliente_id y descripcion son obligatorios');
+        }
+
+        // Generar número de servicio
+        $numero = 'SVC-' . date('Y') . '-' . rand(1000, 9999);
+
+        $stmt = $this->pdo->prepare('INSERT INTO servicios (numero_servicio, cliente_id, descripcion, fecha_solicitud, valor_estimado) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$numero, $cliente_id, $desc, $fecha, $valor]);
+        
+        $this->success(['id' => $this->pdo->lastInsertId(), 'numero_servicio' => $numero], 'Servicio creado', 201);
+    }
+
+    /**
      * GET /api/v1/servicios/:id
      * Ver detalle de un servicio
      */

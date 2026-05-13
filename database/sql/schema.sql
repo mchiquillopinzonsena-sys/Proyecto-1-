@@ -483,5 +483,20 @@ INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
   WHERE r.nombre = 'cliente';
 
 -- ============================================================
+-- TABLE: NOTIFICACIONES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notificaciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT NOT NULL,
+  titulo VARCHAR(255) NOT NULL,
+  mensaje TEXT NOT NULL,
+  leida TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_usuario_id (usuario_id),
+  INDEX idx_leida (leida)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Notificaciones del sistema';
+
+-- ============================================================
 -- FIN DEL SCHEMA
 -- ============================================================

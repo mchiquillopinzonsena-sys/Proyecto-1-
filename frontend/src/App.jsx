@@ -4,30 +4,19 @@ import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 
-// Lazy-load páginas protegidas (se crearán después)
-// import { DashboardPage } from './pages/DashboardPage';
-// import { ServiciosPage } from './pages/ServiciosPage';
-// import { CuentasPage } from './pages/CuentasPage';
-// import { UsuariosPage } from './pages/UsuariosPage';
-// import { CotizadorPage } from './pages/CotizadorPage';
-// import { StockPage } from './pages/StockPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { ServiciosPage } from './pages/ServiciosPage';
+import { CuentasPage } from './pages/CuentasPage';
+import { UsuariosPage } from './pages/UsuariosPage';
+import { CotizadorPage } from './pages/CotizadorPage';
+import { StockPage } from './pages/StockPage';
+import { AgendaPage } from './pages/AgendaPage';
 
 /**
  * URL base de la API — configurable vía .env (VITE_API_URL)
  * En dev apunta a http://localhost:8000, en prod a la URL del servidor PHP.
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
-
-/**
- * Placeholder temporal mientras se crean las páginas protegidas.
- * Reemplazar por el componente real al implementar cada sección.
- */
-const PlaceholderPage = ({ title }) => (
-  <div style={{ padding: '2rem', textAlign: 'center' }}>
-    <h2>{title}</h2>
-    <p style={{ color: '#6b7280' }}>Página en construcción.</p>
-  </div>
-);
 
 export default function App() {
   return (
@@ -42,7 +31,7 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Dashboard" />
+                <DashboardPage />
               </ProtectedRoute>
             }
           />
@@ -50,7 +39,7 @@ export default function App() {
             path="/servicios"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Servicios" />
+                <ServiciosPage />
               </ProtectedRoute>
             }
           />
@@ -58,15 +47,15 @@ export default function App() {
             path="/cuentas"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Cuentas de Cobro" />
+                <CuentasPage />
               </ProtectedRoute>
             }
           />
           <Route
             path="/usuarios"
             element={
-              <ProtectedRoute>
-                <PlaceholderPage title="Usuarios" />
+              <ProtectedRoute requiredRole="admin">
+                <UsuariosPage />
               </ProtectedRoute>
             }
           />
@@ -74,7 +63,7 @@ export default function App() {
             path="/cotizador"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Cotizador" />
+                <CotizadorPage />
               </ProtectedRoute>
             }
           />
@@ -82,7 +71,15 @@ export default function App() {
             path="/stock"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Inventario / Stock" />
+                <StockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agenda"
+            element={
+              <ProtectedRoute>
+                <AgendaPage />
               </ProtectedRoute>
             }
           />

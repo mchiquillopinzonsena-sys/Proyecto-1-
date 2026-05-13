@@ -10,6 +10,32 @@ use App\Services\CuentaCobroService;
 class CuentasCobroController extends BaseController
 {
     /**
+     * GET /api/v1/cuentas
+     * Listar cuentas de cobro (filtradas por rol)
+     */
+    public function index(): void
+    {
+        $this->authorize('cuentas.leer');
+
+        $scope = $this->getClientScope();
+        
+        $sql = 'SELECT v.*, cc.cliente_id FROM v_cuentas_cobro_detallado v JOIN cuentas_cobro cc ON v.id = cc.id';
+        $params = [];
+
+        if ($scope !== null) {
+            $sql .= ' WHERE cc.cliente_id = ?';
+            $params[] = $scope;
+        }
+
+        $sql .= ' ORDER BY v.created_at DESC LIMIT 200';
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        
+        $this->success($stmt->fetchAll(\PDO::FETCH_ASSOC));
+    }
+
+    /**
      * POST /api/v1/cuentas
      * Crear nueva cuenta de cobro desde servicios
      */

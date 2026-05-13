@@ -38,11 +38,19 @@ export const AuthProvider = ({ children, apiBaseUrl }) => {
     }
   }, [apiBaseUrl]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await apiRequest(apiBaseUrl, '/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('access_token') || ''}` }
+      });
+    } catch(e) {
+      // Ignoramos el error si el token ya expiró o no se pudo comunicar con el server
+    }
     setAccessToken(null);
     sessionStorage.removeItem('refresh_token');
     setUser(null);
-  }, []);
+  }, [apiBaseUrl]);
 
   const value = {
     user,

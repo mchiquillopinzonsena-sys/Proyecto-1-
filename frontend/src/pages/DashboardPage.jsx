@@ -1,113 +1,139 @@
 import React, { useEffect, useState } from 'react';
 import { MainLayout } from '../components/Layout';
-import { useAuth } from '../context/AuthContext';
 import { apiRequest, getAccessToken } from '../api/client';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
-const ESTADO_BADGE = {
-  pendiente: 'badge-yellow',
-  programado: 'badge-blue',
-  en_proceso: 'badge-blue',
-  completado: 'badge-green',
-  cancelado: 'badge-gray',
-};
+const COLORS = ['#1d4ed8', '#f59e0b', '#10b981', '#6b7280', '#ef4444'];
 
-function StatCard({ icon, label, value, type }) {
-  return (
-    <div className={`kpi-card ${type}`}>
-      <div className="kpi-icon">{icon}</div>
-      <div className="kpi-label">{label}</div>
-      <div className="kpi-value">{value ?? '—'}</div>
-    </div>
-  );
-}
+const StatCard = ({ title, value, subtitle, color = 'blue' }) => (
+  <div className={`kpi-card kpi-${color}`}>
+    <div className="kpi-value">{value}</div>
+    <div className="kpi-title">{title}</div>
+    {subtitle && <div className="kpi-subtitle">{subtitle}</div>}
+  </div>
+);
 
 export const DashboardPage = () => {
-  const { user } = useAuth();
-  const [servicios, setServicios] = useState([]);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await apiRequest(API, '/api/v1/servicios', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${getAccessToken()}` },
-        });
-        setServicios(res.data ?? []);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    apiRequest(API, '/api/v1/dashboard', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${getAccessToken()}` },
+    })
+      .then(res => {
+        setData(res.data);
+        setError(null);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  const byEstado = (estado) => servicios.filter((s) => s.estado === estado).length;
+  if (loading) {
+    return <MainLayout><div className="spinner-wrap"><div className="spinner" /></div></MainLayout>;
+  }
+
+  if (error) {
+    return <MainLayout><div className="alert alert-error">{error}</div></MainLayout>;
+  }
+
+  if (!data) return null;
+
+  // Preparar datos para gráficos
+  const chartData = Object.entries(data.servicios.desglose || {}).map(([key, value]) => ({
+    name: key.toUpperCase(),
+    value: Number(value)
+  }));
+
+  const mockFinanzas = [
+    { name: 'Ene', ingresos: 4000 },
+    { name: 'Feb', ingresos: 3000 },
+    { name: 'Mar', ingresos: 5000 },
+    { name: 'Abr', ingresos: 7000 },
+    { name: 'May', ingresos: 6500 },
+  ];
 
   return (
     <MainLayout>
       <div className="page-header">
-        <h1 className="page-title">Bienvenido, {user?.email?.split('@')[0]} 👋</h1>
-        <p className="page-subtitle">Resumen del sistema — Intérmica S.A.S</p>
+        <h1 className="page-title">📊 Panel de Control</h1>
+        <p className="page-subtitle">Métricas y KPIs del sistema en tiempo real</p>
       </div>
 
-      {loading ? (
-        <div className="spinner-wrap"><div className="spinner" /></div>
-      ) : error ? (
-        <div className="alert alert-error">{error}</div>
-      ) : (
-        <>
-          <div className="kpi-grid">
-            <StatCard icon="📋" label="Total servicios" value={servicios.length} type="blue" />
-            <StatCard icon="⏳" label="Pendientes" value={byEstado('pendiente')} type="yellow" />
-            <StatCard icon="⚙️" label="En proceso" value={byEstado('en_proceso')} type="blue" />
-            <StatCard icon="✅" label="Completados" value={byEstado('completado')} type="green" />
-          </div>
+      <div className="kpi-grid">
+        <StatCard
+          title="Total Servicios"
+          value={data.servicios.total}
+          subtitle="Registrados en el sistema"
+          color="blue"
+        />
+        <StatCard
+          title="Servicios Pendientes"
+          value={data.servicios.pendientes}
+          subtitle="Requieren programación"
+          color="yellow"
+        />
+        <StatCard
+          title="Cuentas Vencidas"
+          value={data.cuentas_vencidas}
+          subtitle="Facturas por cobrar"
+          color="red"
+        />
+        <StatCard
+          title="Alertas de Stock"
+          value={data.alertas_stock}
+          subtitle="Artículos bajo el mínimo"
+          color="red"
+        />
+      </div>
 
-          <div className="card">
-            <div className="card-header">
-              <span className="card-title">Últimos servicios</span>
-            </div>
-            <div className="table-wrapper">
-              {servicios.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">📭</div>
-                  <p>No hay servicios registrados.</p>
-                </div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>N° Servicio</th>
-                      <th>Estado</th>
-                      <th>Fecha solicitud</th>
-                      <th>Valor estimado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {servicios.slice(0, 10).map((s) => (
-                      <tr key={s.id}>
-                        <td><strong>{s.numero_servicio}</strong></td>
-                        <td>
-                          <span className={`badge ${ESTADO_BADGE[s.estado] ?? 'badge-gray'}`}>
-                            {s.estado}
-                          </span>
-                        </td>
-                        <td>{s.fecha_solicitud}</td>
-                        <td>{s.valor_estimado ? `$ ${Number(s.valor_estimado).toLocaleString('es-CO')}` : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginTop: '2rem' }}>
+        
+        {/* Gráfico de Torta */}
+        <div className="card">
+          <h3 style={{marginTop:0, color:'#1e3a8a', marginBottom:'1rem'}}>Estado de Servicios</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                  label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Gráfico de Barras */}
+        <div className="card">
+          <h3 style={{marginTop:0, color:'#1e3a8a', marginBottom:'1rem'}}>Ingresos Proyectados (Muestra)</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <BarChart data={mockFinanzas}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280'}} />
+                <Tooltip cursor={{fill: '#f3f4f6'}} />
+                <Bar dataKey="ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+      </div>
     </MainLayout>
   );
 };

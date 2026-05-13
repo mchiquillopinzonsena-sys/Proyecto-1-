@@ -44,6 +44,7 @@ $publicRoutes = [
     'GET /api/v1/health',
     'POST /api/v1/auth/login',
     'POST /api/v1/auth/refresh',
+    'GET /api/v1/setup',
 ];
 
 $routeKey = $method . ' ' . ($path === '/' ? '/' : rtrim($path, '/'));
@@ -54,6 +55,24 @@ try {
 
     // ===== PUBLIC ROUTES (Sin autenticación) =====
     if ($isPublic) {
+        if ($routeKey === 'GET /api/v1/setup') {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM usuarios");
+            if ($stmt->fetchColumn() == 0) {
+                $hash = password_hash('admin123', PASSWORD_BCRYPT);
+                $pdo->prepare("INSERT INTO usuarios (email, nombre_completo, password_hash, rol) VALUES ('admin@intermica.com.co', 'Administrador Principal', ?, 'admin')")->execute([$hash]);
+                
+                $userId = $pdo->lastInsertId();
+                $pdo->prepare("INSERT INTO usuario_roles (usuario_id, rol_id) SELECT ?, id FROM roles WHERE nombre = 'admin'")->execute([$userId]);
+                
+                http_response_code(200);
+                echo json_encode(ResponseHelper::success(['email' => 'admin@intermica.com.co', 'password' => 'admin123'], 'Usuario Admin autogenerado.'));
+            } else {
+                http_response_code(400);
+                echo json_encode(ResponseHelper::error('Ya existen usuarios. Setup deshabilitado.', 400));
+            }
+            exit;
+        }
+
         if ($routeKey === 'GET /api/v1/health') {
             http_response_code(200);
             echo json_encode(ResponseHelper::success([
@@ -174,6 +193,46 @@ try {
             (new \App\Http\Controllers\ServiciosController($pdo, $ctx))->updateEstado((int) $m[1]);
             exit;
 
+        // POST /api/v1/servicios
+        case $method === 'POST' && $path === '/api/v1/servicios':
+            (new \App\Http\Controllers\ServiciosController($pdo, $ctx))->store();
+            exit;
+
+        // GET /api/v1/agenda
+        case $method === 'GET' && $path === '/api/v1/agenda':
+            (new \App\Http\Controllers\AgendaController($pdo, $ctx))->index();
+            exit;
+        // POST /api/v1/agenda
+        case $method === 'POST' && $path === '/api/v1/agenda':
+            (new \App\Http\Controllers\AgendaController($pdo, $ctx))->store();
+            exit;
+
+        // GET /api/v1/notificaciones
+        case $method === 'GET' && $path === '/api/v1/notificaciones':
+            (new \App\Http\Controllers\NotificacionesController($pdo, $ctx))->index();
+            exit;
+        // PATCH /api/v1/notificaciones/:id/leer
+        case $method === 'PATCH' && preg_match('#^/api/v1/notificaciones/(\d+)/leer$#', $path, $m):
+            (new \App\Http\Controllers\NotificacionesController($pdo, $ctx))->markAsRead((int) $m[1]);
+            exit;
+
+        // POST /api/v1/auth/logout
+        case $method === 'POST' && $path === '/api/v1/auth/logout':
+            (new \App\Services\AuthService($pdo))->revokeByAccessToken($ctx->token);
+            http_response_code(200);
+            echo json_encode(\App\Helpers\ResponseHelper::success(null, 'Sesión cerrada'));
+            exit;
+
+        // GET /api/v1/dashboard
+        case $method === 'GET' && $path === '/api/v1/dashboard':
+            (new \App\Http\Controllers\DashboardController($pdo, $ctx))->index();
+            exit;
+
+        // GET /api/v1/cuentas
+        case $method === 'GET' && $path === '/api/v1/cuentas':
+            (new \App\Http\Controllers\CuentasCobroController($pdo, $ctx))->index();
+            exit;
+
         // POST /api/v1/cuentas
         case $method === 'POST' && $path === '/api/v1/cuentas':
             (new \App\Http\Controllers\CuentasCobroController($pdo, $ctx))->store();
@@ -239,6 +298,21 @@ try {
 } catch (AppException $e) {
     http_response_code($e->getStatusCode());
     echo json_encode(ResponseHelper::error($e->getMessage(), $e->getStatusCode(), $e->getErrors()));
+} catch (\PDOException $e) {
+    // Capturar Errores de Triggers MySQL (SIGNAL SQLSTATE '45000')
+    if ($e->getCode() === '45000') {
+        http_response_code(400);
+        $msg = $e->getMessage();
+        // Limpiar el prefijo técnico (ej: "SQLSTATE[45000]: <<Unknown error>>: 1644 El técnico está ocupado")
+        if (preg_match('/1644\s+(.*)/', $msg, $m)) {
+            $msg = $m[1];
+        }
+        echo json_encode(ResponseHelper::error($msg, 400));
+    } else {
+        error_log($e->getMessage() . "\n" . $e->getTraceAsString());
+        http_response_code(500);
+        echo json_encode(ResponseHelper::error('Error interno de base de datos', 500));
+    }
 } catch (Throwable $e) {
     error_log($e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);

@@ -25,6 +25,10 @@ export const ServiciosPage = () => {
   const [cambiando, setCambiando] = useState(false);
   const [nuevoEstado, setNuevoEstado] = useState('');
 
+  const [showCrear, setShowCrear] = useState(false);
+  const [formSvc, setFormSvc]     = useState({ cliente_id: '', descripcion: '', valor_estimado: '' });
+  const [savingSvc, setSavingSvc] = useState(false);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -44,6 +48,30 @@ export const ServiciosPage = () => {
   useEffect(() => { load(); }, []);
 
   const canChangeEstado = user?.role === 'admin' || user?.role === 'tecnico';
+  const canCreate = user?.role === 'admin';
+
+  const handleCrearServicio = async (e) => {
+    e.preventDefault();
+    setSavingSvc(true);
+    try {
+      await apiRequest(API, '/api/v1/servicios', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+        json: {
+          cliente_id: Number(formSvc.cliente_id),
+          descripcion: formSvc.descripcion,
+          valor_estimado: Number(formSvc.valor_estimado) || 0
+        }
+      });
+      setShowCrear(false);
+      setFormSvc({ cliente_id: '', descripcion: '', valor_estimado: '' });
+      await load();
+    } catch(e) {
+      alert(e.message);
+    } finally {
+      setSavingSvc(false);
+    }
+  };
 
   const handleCambiarEstado = async () => {
     if (!nuevoEstado || !selected) return;
@@ -69,9 +97,14 @@ export const ServiciosPage = () => {
 
   return (
     <MainLayout>
-      <div className="page-header">
-        <h1 className="page-title">🔧 Servicios</h1>
-        <p className="page-subtitle">Gestión de servicios termográficos</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="page-title">🔧 Servicios</h1>
+          <p className="page-subtitle">Gestión de servicios termográficos</p>
+        </div>
+        {canCreate && (
+          <button className="btn btn-primary" onClick={() => setShowCrear(true)}>+ Nuevo Servicio</button>
+        )}
       </div>
 
       <div className="filters-bar">
@@ -184,6 +217,44 @@ export const ServiciosPage = () => {
                 {cambiando ? 'Guardando…' : 'Confirmar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal crear servicio */}
+      {showCrear && (
+        <div className="modal-overlay" onClick={() => setShowCrear(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nuevo Servicio</span>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowCrear(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCrearServicio}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">ID del Cliente<span className="req">*</span></label>
+                  <input className="form-control" type="number" required
+                    value={formSvc.cliente_id} onChange={e => setFormSvc({...formSvc, cliente_id: e.target.value})} />
+                  <span style={{fontSize: '.7rem', color:'var(--gray-500)'}}>Ejemplo: 1 o 2 (ID de tabla clientes)</span>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Descripción<span className="req">*</span></label>
+                  <textarea className="form-control" rows="3" required
+                    value={formSvc.descripcion} onChange={e => setFormSvc({...formSvc, descripcion: e.target.value})}></textarea>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Valor Estimado (COP)</label>
+                  <input className="form-control" type="number"
+                    value={formSvc.valor_estimado} onChange={e => setFormSvc({...formSvc, valor_estimado: e.target.value})} />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowCrear(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingSvc}>
+                  {savingSvc ? 'Creando…' : 'Crear'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

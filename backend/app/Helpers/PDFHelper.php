@@ -90,6 +90,9 @@ class PDFHelper
         $iva         = number_format((float) ($cuenta['impuesto_iva'] ?? 0), 2, ',', '.');
         $total       = number_format((float) ($cuenta['total'] ?? 0), 2, ',', '.');
 
+        // Logo SVG codificado en base64 para evitar dependencias externas en el PDF
+        $logoBase64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgNjAiPjxwYXRoIGZpbGw9IiMzYjgyZjYiIGQ9Ik0zMCwzMCBtLTE1LDAgYTE1LDE1IDAgMSwxIDMwLDAgYTE1LDE1IDAgMSwxIC0zMCwwIi8+PHBhdGggZmlsbD0iI2ZiYmYyNCIgZD0iTTM1LDI1IGwtMTAsMTAgbDEwLDEwIi8+PHRleHQgeD0iNTUiIHk9IjM4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWUzYThhIj5JTlTDiVJNSUNBPC90ZXh0Pjwvc3ZnPg==';
+
         $rowsHtml = '';
         foreach ($items as $item) {
             $desc   = htmlspecialchars((string) ($item['descripcion'] ?? ''));
@@ -100,9 +103,9 @@ class PDFHelper
             $rowsHtml .= "
             <tr>
               <td>{$desc}</td>
-              <td style='text-align:center'>{$qty} {$unidad}</td>
-              <td style='text-align:right'>{$moneda} {$vu}</td>
-              <td style='text-align:right'>{$moneda} {$vtotal}</td>
+              <td class='center'>{$qty} {$unidad}</td>
+              <td class='right'>{$moneda} {$vu}</td>
+              <td class='right'><strong>{$moneda} {$vtotal}</strong></td>
             </tr>";
         }
 
@@ -112,43 +115,75 @@ class PDFHelper
 <head>
 <meta charset="UTF-8"/>
 <style>
-  body  { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111827; margin: 40px; }
-  h1   { font-size: 20px; color: #1e40af; margin: 0 0 2px; }
-  hr   { border: none; border-top: 2px solid #1e40af; margin: 12px 0; }
-  .meta     { display: flex; justify-content: space-between; margin-bottom: 16px; }
-  .badge    { display: inline-block; padding: 2px 10px; border-radius: 12px;
-              background: #dbeafe; color: #1e3a8a; font-weight: bold; font-size: 11px; }
-  table     { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  th        { background: #1e40af; color: #fff; padding: 8px 10px; text-align: left; }
-  td        { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
-  tr:nth-child(even) td { background: #f9fafb; }
-  .totals          { margin-top: 20px; }
-  .totals table    { width: 280px; margin-left: auto; border: none; }
-  .totals td       { border: none; padding: 3px 8px; }
-  .total-row td    { font-weight: bold; font-size: 13px;
-                     border-top: 2px solid #1e40af; padding-top: 6px; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+  
+  body { 
+    font-family: 'Inter', Helvetica, sans-serif; 
+    font-size: 13px; color: #374151; margin: 0; padding: 40px; 
+    background-color: #ffffff;
+  }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; }
+  .logo { width: 180px; }
+  .invoice-title { text-align: right; }
+  .invoice-title h1 { color: #1e3a8a; font-size: 28px; margin: 0; font-weight: 800; letter-spacing: -0.5px; }
+  .invoice-title p { color: #6b7280; font-size: 14px; margin: 5px 0 0; }
+  
+  .details-container { display: flex; justify-content: space-between; margin-bottom: 40px; }
+  .details-box { background: #f9fafb; padding: 15px 20px; border-radius: 8px; width: 45%; border: 1px solid #e5e7eb; }
+  .details-box h3 { color: #111827; margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .details-box p { margin: 4px 0; font-size: 13px; line-height: 1.5; }
+  .badge { background: #dbeafe; color: #1d4ed8; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 11px; }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  th { background: #1e3a8a; color: #ffffff; padding: 12px 15px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 12px 15px; border-bottom: 1px solid #f3f4f6; color: #4b5563; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background-color: #f8fafc; }
+  
+  .center { text-align: center; }
+  .right { text-align: right; }
+  
+  .totals-container { display: flex; justify-content: flex-end; }
+  .totals-table { width: 320px; border: none; }
+  .totals-table td { padding: 8px 15px; background: transparent; border: none; color: #374151; }
+  .totals-table tr.total-row td { background: #1e3a8a; color: #ffffff; font-size: 16px; font-weight: 800; border-radius: 4px; }
+  
+  .footer { margin-top: 60px; text-align: center; color: #9ca3af; font-size: 11px; border-top: 1px solid #e5e7eb; padding-top: 20px; }
 </style>
 </head>
 <body>
-  <h1>Intérmica S.A.S</h1>
-  <small>Sistema de Gestión de Servicios Termográficos</small>
-  <hr/>
-  <div class="meta">
-    <div>
-      <strong>Cuenta de Cobro:</strong> {$numero}<br/>
-      <strong>Fecha emisión:</strong> {$emision}<br/>
-      <strong>Vencimiento:</strong> {$vencimiento}
+  <div class="header">
+    <img src="{$logoBase64}" alt="Intérmica Logo" class="logo"/>
+    <div class="invoice-title">
+      <h1>CUENTA DE COBRO</h1>
+      <p>Comprobante Oficial</p>
     </div>
-    <div><strong>Estado:</strong><br/><span class="badge">{$estado}</span></div>
+  </div>
+
+  <div class="details-container">
+    <div class="details-box">
+      <h3>Datos de Emisión</h3>
+      <p><strong>N° Documento:</strong> {$numero}</p>
+      <p><strong>Fecha Emisión:</strong> {$emision}</p>
+      <p><strong>Vencimiento:</strong> {$vencimiento}</p>
+      <p><strong>Estado:</strong> <span class="badge">{$estado}</span></p>
+    </div>
+    <div class="details-box">
+      <h3>Intérmica S.A.S</h3>
+      <p>NIT: 900.123.456-7</p>
+      <p>Especialistas en Termografía</p>
+      <p>Bogotá, Colombia</p>
+      <p>contacto@intermica.com.co</p>
+    </div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>Descripción</th>
-        <th style="text-align:center">Cantidad</th>
-        <th style="text-align:right">Valor unitario</th>
-        <th style="text-align:right">Total línea</th>
+        <th>Descripción del Servicio / Artículo</th>
+        <th class="center">Cant.</th>
+        <th class="right">V. Unitario</th>
+        <th class="right">Total</th>
       </tr>
     </thead>
     <tbody>
@@ -156,12 +191,17 @@ class PDFHelper
     </tbody>
   </table>
 
-  <div class="totals">
-    <table>
-      <tr><td>Subtotal:</td><td style="text-align:right">{$moneda} {$subtotal}</td></tr>
-      <tr><td>IVA (19 %):</td><td style="text-align:right">{$moneda} {$iva}</td></tr>
-      <tr class="total-row"><td>TOTAL:</td><td style="text-align:right">{$moneda} {$total}</td></tr>
+  <div class="totals-container">
+    <table class="totals-table">
+      <tr><td>Subtotal:</td><td class="right">{$moneda} {$subtotal}</td></tr>
+      <tr><td>IVA (19%):</td><td class="right">{$moneda} {$iva}</td></tr>
+      <tr class="total-row"><td>TOTAL A PAGAR:</td><td class="right">{$moneda} {$total}</td></tr>
     </table>
+  </div>
+
+  <div class="footer">
+    <p>Este documento es una representación impresa de una cuenta de cobro.</p>
+    <p>Agradecemos su confianza en los servicios de Intérmica S.A.S.</p>
   </div>
 </body>
 </html>
