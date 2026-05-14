@@ -26,6 +26,17 @@ if ($jwtSecret === '' || $jwtSecret === false) {
 }
 JWTHelper::setSecret($jwtSecret);
 
+// Cabeceras CORS Globales
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+
+// Respuesta rápida para pre-flight
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 // Parse path y method
 $path = $path ?? (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
 $path = '/' . trim(str_replace('\\', '/', (string) $path), '/');
